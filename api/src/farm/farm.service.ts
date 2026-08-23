@@ -1,0 +1,336 @@
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { CreateFarmDto } from './dto/create-farm.dto';
+import { UpdateFarmDto } from './dto/update-farm.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Farm } from './entities/farm.entity';
+import { In, Repository } from 'typeorm';
+import { User } from 'src/user/entities/user.entity';
+import { WeatherService } from 'src/weather/weather.service';
+import { Crop } from 'src/crops/entities/crop.entity';
+import { FarmCrop } from 'src/farm_crops/entities/farm_crop.entity';
+import { RuleEngineService } from 'src/rule-engine/rule-engine.service';
+import { CropEvaluation, CurrentData } from 'src/types/cropEvaluation';
+import { GeminiService } from 'src/AI/gemini.service';
+import { RuleOccurrence } from 'src/types/ruleOccurenceType';
+import { RuleEvaluation } from 'src/types/ruleEvaluation';
+import { DailyEvaluation, HourlyEvaluation } from 'src/types/hourlyEvaluation';
+import { FarmCropAdvisory } from './entities/farm_crop_advisory.entity';
+
+@Injectable()
+export class FarmService {
+  constructor(
+    @InjectRepository(Farm)
+    private farmRepository: Repository<Farm>,
+
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+
+    @InjectRepository(Crop)
+    private cropRepository: Repository<Crop>,
+
+    @InjectRepository(FarmCrop)
+    private farmCropRepository: Repository<FarmCrop>,
+
+    @InjectRepository(FarmCropAdvisory)
+    private readonly farmCropAdvisoryRepository: Repository<FarmCropAdvisory>,
+
+    private weatherService: WeatherService,
+
+    private ruleEngineService: RuleEngineService,
+
+    private readonly geminiService: GeminiService,
+  ) {}
+
+  private withFallback(evaluation: any[]) {
+    const NO_RISK_MESSAGE =
+      'No risks detected for the current conditions.';
+
+    return evaluation.length > 0
+      ? evaluation
+      : [
+          {
+            ruleId: null,
+            ruleCode: 'NO_RISK',
+            riskLevel: 'NONE',
+            riskType: null,
+            category: null,
+            priority: null,
+            message: NO_RISK_MESSAGE,
+          },
+        ];
+  }
+
+  private collectRuleOccurrences(
+    current: CurrentData | null,
+    hourly: HourlyEvaluation[],
+    daily: DailyEvaluation[],
+  ): RuleOccurrence[] {
+    const map = new Map<string, RuleOccurrence>();
+
+    const add = (
+      time: string,
+      temperature: number,
+      humidity: number,
+      rules: RuleEvaluation[] | null,
+    ) => {
+      if (!rules) return; // guard against null
+
+      for (const rule of rules) {
+        if (rule.ruleCode === 'NO_RISK') continue;
+        if (!map.has(rule.ruleCode)) {
+          map.set(rule.ruleCode, {
+            ruleCode: rule.ruleCode,
+            riskLevel: rule.riskLevel,
+            riskType: rule.riskType,
+            category: rule.category,
+            message: rule.message,
+            occurrences: [],
+          });
+        }
+        map.get(rule.ruleCode)!.occurrences.push({ time, temperature, humidity });
+      }
+    };
+
+    if (current) {
+      add('now', current.temperature, current.humidity, current.evaluation);
+    }
+    for (const h of hourly) {
+      add(h.time, h.temperature, h.humidity, h.evaluation);
+    }
+    for (const d of daily) {
+      if (d.forecast_date) {
+        add(d.forecast_date, d.temperature ?? 0, d.humidity ?? 0, d.evaluation);
+      }
+    }
+
+    return Array.from(map.values());
+  }
+
+  async create(createFarmDto: CreateFarmDto) {
+    const { user_id, name, latitude, longitude, area, soil_type, irrigation_type, farming_practice, crop_Ids, soilPh } = createFarmDto;
+
+    const user = await this.userRepository.findOne({ where: { id: user_id }});
+
+    if(!user) {
+      throw new NotFoundException(`User with ID ${user_id} not found`);
+    }
+
+    const existingFarm = await this.farmRepository.findOne({
+      where: {
+        name,
+        user: { id: user.id },
+      },
+    });
+
+    if (existingFarm) {
+      throw new ConflictException(
+        `You already have a farm named "${name}".`,
+      );
+    }
+
+    // Validate crop_Ids reference real catalog crops
+    let crops: Crop[] = [];
+    if (crop_Ids?.length) {
+      crops = await this.cropRepository.findBy({ id: In(crop_Ids) });
+      if (crops.length !== crop_Ids.length) {
+        const foundIds = crops.map((c) => c.id);
+        const missing = crop_Ids.filter((id) => !foundIds.includes(id));
+        throw new NotFoundException(`Crop(s) not found: ${missing.join(', ')}`);
+      }
+    } 
+
+    const newFarm = this.farmRepository.create({
+      user: user,
+      name, 
+      latitude,
+      longitude,
+      area,
+      soil_type,
+      irrigation_type,
+      farming_practice,
+      soilPh
+    });
+
+    const savedFarm = await this.farmRepository.save(newFarm);
+
+    if (crops.length) {
+      const farmCrops = crops.map((crop) =>
+        this.farmCropRepository.create({
+          farm: savedFarm,
+          crop,
+        }),
+      );
+      await this.farmCropRepository.save(farmCrops);
+    }
+    
+    return this.farmRepository.findOne({
+      where: { id: savedFarm.id },
+      relations: {
+        crops: {
+          crop: true
+        }
+      } 
+    });
+  }
+
+  async farmEvaluation(id: number) {
+    const farm = await this.farmRepository.findOne({
+      where: { id },
+    });
+
+    if (!farm) {
+      throw new NotFoundException(`Farm with id ${id} not found`);
+    }
+
+    const farmCrop = await this.farmCropRepository.find({
+      where: {
+        farm_id: id,
+      },
+      relations: {
+        crop: true,
+      },
+    });
+
+    const weather = await this.weatherService.getWeather(
+      Number(farm.latitude),
+      Number(farm.longitude),
+      Number(id)
+    );
+
+    if (!weather.current) {
+      throw new NotFoundException(
+        `No current weather data available for farm ${id}`,
+      );
+    }
+
+    const results: CropEvaluation[] = [];
+
+    for (const item of farmCrop) {
+      const currentEvaluation = this.withFallback(
+          await this.ruleEngineService.evaluate({
+          cropId: item.crop?.id,
+          growthStage: item.growth_stage,
+          temperature: weather.current.temperature_2m,
+          humidity: weather.current.relative_humidity_2m,
+          soilPh: farm.soilPh,
+        })
+      );
+
+      const cropResult: CropEvaluation = {
+        cropId: item.crop?.id,
+        growthStage: item.growth_stage,
+        current: {
+          temperature: weather.current.temperature_2m,
+          humidity: weather.current.relative_humidity_2m,
+          evaluation: currentEvaluation,
+        },
+        hourly: [],
+        daily: [],
+        triggeredRisks: [],
+        advisory: null,
+      };
+
+      // CURRENT
+      // cropResult.current.evaluation = await this.ruleEngineService.evaluate({
+      //   cropId: item.crop?.id,
+      //   growthStage: item.growth_stage,
+      //   temperature: weather.current.temperature_2m,
+      //   humidity: weather.current.relative_humidity_2m,
+      //   soilPh: farm.soilPh,
+      // });
+
+      // HOURLY
+      // cropResult.hourly = await Promise.all(
+      //   weather.hourly.time.map(async (time, index) => {
+      //     const evaluation =
+      //       await this.ruleEngineService.evaluate({
+      //         cropId: item.crop?.id,
+      //         growthStage: item.growth_stage,
+      //         temperature: weather.hourly.temperature_2m[index],
+      //         humidity: weather.hourly.relative_humidity_2m[index],
+      //         soilPh: farm.soilPh,
+      //       });
+
+      //     return {
+      //       time,
+      //       temperature: weather.hourly.temperature_2m[index],
+      //       humidity: weather.hourly.relative_humidity_2m[index],
+      //       evaluation,
+      //     };
+      //   }),
+      // );
+
+      cropResult.hourly = await Promise.all(
+        weather.hourly.map(async (hour) => {
+          const evaluation = this.withFallback(
+            await this.ruleEngineService.evaluate({
+              cropId: item.crop?.id,
+              growthStage: item.growth_stage,
+              temperature: hour.temperature_2m,
+              humidity: hour.relative_humidity_2m,
+              soilPh: farm.soilPh,
+            })
+          )
+
+          return {
+            time: hour.forecast_time,
+            temperature: hour.temperature_2m,
+            humidity: hour.relative_humidity_2m,
+            evaluation,
+          };
+        }),
+      );
+
+      const ruleOccurrences = this.collectRuleOccurrences(
+        cropResult.current,
+        cropResult.hourly,
+        cropResult.daily,
+      );
+
+      cropResult.triggeredRisks = ruleOccurrences;
+
+      if (ruleOccurrences.length > 0) {
+        cropResult.advisory = await this.geminiService.generateAdvisory({
+          cropName: item.crop?.name,
+          stage: item.growth_stage,
+          triggeredRules: ruleOccurrences,
+          weather: weather,
+        });
+
+        const advisoryRecord = this.farmCropAdvisoryRepository.create({
+          farm_crop_id: item.id,
+          growth_stage: item.growth_stage,
+          triggered_risks: ruleOccurrences,
+          advisory: cropResult.advisory,
+        });
+
+        await this.farmCropAdvisoryRepository.save(advisoryRecord);
+
+      }
+
+      results.push(cropResult);
+    }
+
+    return {
+      farmId: farm.id,
+      farmName: farm.name,
+      results,
+    };
+  }
+
+  async findAll() {
+    return await this.farmRepository.find();
+  }
+
+  findOne(id: number) {
+    return `This action returns a #${id} farm`;
+  }
+
+  update(id: number, updateFarmDto: UpdateFarmDto) {
+    return `This action updates a #${id} farm`;
+  }
+
+  remove(id: number) {
+    return `This action removes a #${id} farm`;
+  }
+}
