@@ -188,6 +188,7 @@ export class FarmService {
       },
       relations: {
         crop: true,
+        growth_stage: true,
       },
     });
 
@@ -206,10 +207,12 @@ export class FarmService {
     const results: CropEvaluation[] = [];
 
     for (const item of farmCrop) {
+      const growthStageName = item.growth_stage?.stage_name || '';
+
       const currentEvaluation = this.withFallback(
           await this.ruleEngineService.evaluate({
           cropId: item.crop?.id,
-          growthStage: item.growth_stage,
+          growthStage: growthStageName,
           temperature: weather.current.temperature_2m,
           humidity: weather.current.relative_humidity_2m,
           soilPh: farm.soilPh,
@@ -218,7 +221,7 @@ export class FarmService {
 
       const cropResult: CropEvaluation = {
         cropId: item.crop?.id,
-        growthStage: item.growth_stage,
+        growthStage: growthStageName,
         current: {
           temperature: weather.current.temperature_2m,
           humidity: weather.current.relative_humidity_2m,
@@ -230,42 +233,12 @@ export class FarmService {
         advisory: null,
       };
 
-      // CURRENT
-      // cropResult.current.evaluation = await this.ruleEngineService.evaluate({
-      //   cropId: item.crop?.id,
-      //   growthStage: item.growth_stage,
-      //   temperature: weather.current.temperature_2m,
-      //   humidity: weather.current.relative_humidity_2m,
-      //   soilPh: farm.soilPh,
-      // });
-
-      // HOURLY
-      // cropResult.hourly = await Promise.all(
-      //   weather.hourly.time.map(async (time, index) => {
-      //     const evaluation =
-      //       await this.ruleEngineService.evaluate({
-      //         cropId: item.crop?.id,
-      //         growthStage: item.growth_stage,
-      //         temperature: weather.hourly.temperature_2m[index],
-      //         humidity: weather.hourly.relative_humidity_2m[index],
-      //         soilPh: farm.soilPh,
-      //       });
-
-      //     return {
-      //       time,
-      //       temperature: weather.hourly.temperature_2m[index],
-      //       humidity: weather.hourly.relative_humidity_2m[index],
-      //       evaluation,
-      //     };
-      //   }),
-      // );
-
       cropResult.hourly = await Promise.all(
         weather.hourly.map(async (hour) => {
           const evaluation = this.withFallback(
             await this.ruleEngineService.evaluate({
               cropId: item.crop?.id,
-              growthStage: item.growth_stage,
+              growthStage: growthStageName,
               temperature: hour.temperature_2m,
               humidity: hour.relative_humidity_2m,
               soilPh: farm.soilPh,
@@ -292,14 +265,14 @@ export class FarmService {
       if (ruleOccurrences.length > 0) {
         cropResult.advisory = await this.geminiService.generateAdvisory({
           cropName: item.crop?.name,
-          stage: item.growth_stage,
+          stage: growthStageName,
           triggeredRules: ruleOccurrences,
           weather: weather,
         });
 
         const advisoryRecord = this.farmCropAdvisoryRepository.create({
           farm_crop_id: item.id,
-          growth_stage: item.growth_stage,
+          growth_stage: growthStageName,
           triggered_risks: ruleOccurrences,
           advisory: cropResult.advisory,
         });

@@ -1,4 +1,5 @@
 import { AdvisoryRule } from "src/advisory-rules/entities/advisory-rule.entity";
+import { GrowthStage } from "src/crops-growth-stages/entities/growth-stage.entity";
 import { FarmCrop } from "src/farm_crops/entities/farm_crop.entity";
 import { Column, Entity, ManyToMany, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
@@ -31,4 +32,7 @@ export class Crop {
 
   @OneToMany(() => AdvisoryRule, (rule) => rule.crop)
   advisory!: AdvisoryRule[];
+
+  @OneToMany(() => GrowthStage, (growthStage) => growthStage.crop)
+  growth_stages!: GrowthStage[];
 }
