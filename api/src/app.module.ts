@@ -16,6 +16,7 @@ import { UserModule } from './user/user.module';
 import { RuleEngineModule } from './rule-engine/rule-engine.module';
 import { CropsGrowthStagesModule } from './crops-growth-stages/crops-growth-stages.module';
 import { CropGrowthModule } from './crop-growth/crop-growth.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { CropGrowthModule } from './crop-growth/crop-growth.module';
     UserModule,
     RuleEngineModule,
     CropGrowthModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
