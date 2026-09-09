@@ -2,7 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { VoiceMicButton } from './components/VoiceMicButton';
-import { Welcome } from './pages/Welcome';
+import { Welcome } from './pages/welcome/Welcome';
 import { Register } from './pages/Register';
 import { OnboardingLayout } from './pages/onboarding/OnboardingLayout';
 import { OnboardingStart } from './pages/onboarding/OnboardingStart';
@@ -13,7 +13,7 @@ import { SoilDetails } from './pages/onboarding/SoilDetails';
 import { Irrigation } from './pages/onboarding/Irrigation';
 import { FarmingPractice } from './pages/onboarding/FarmingPractice';
 import { FarmReady } from './pages/onboarding/FarmReady';
-import { Dashboard } from './pages/Dashboard';
+import { Dashboard } from './pages/dashboard/Dashboard';
 
 export function App() {
   const location = useLocation();

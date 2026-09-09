@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CloudSun, Satellite, Sprout, ArrowRight, ShieldCheck, Sparkles, Activity, Layers, Droplets } from 'lucide-react';
-import { SignInModal } from '../components/SignInModal';
-import { useSetVoiceScope } from '../context/VoiceScopeContext';
+import { SignInModal } from '../../components/SignInModal';
+import { useSetVoiceScope } from '../../context/VoiceScopeContext';
 
 export const Welcome: React.FC = () => {
   const navigate = useNavigate();

@@ -2,9 +2,11 @@ import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import * as bcrypt from 'bcryptjs';
 import { Crop } from '../crops/entities/crop.entity';
 import { GrowthStage } from '../crops-growth-stages/entities/growth-stage.entity';
 import { AdvisoryRule } from '../advisory-rules/entities/advisory-rule.entity';
+import { User } from '../user/entities/user.entity';
 
 // Load environment variables from api/.env or root .env
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
@@ -452,6 +454,28 @@ export async function seedRiceIR64() {
       await advisoryRuleRepo.save(rule);
       console.log(`   ✓ Rule: ${ruleData.rule_code} [${ruleData.risk_level} - ${ruleData.risk_type}] (Stage: ${ruleData.stage || 'ALL'})`);
     }
+  }
+
+  // 4. Seed Default Farmer User
+  console.log('\n👤 Seeding Default Farmer User...');
+  const userRepo = AppDataSource.getRepository(User);
+  const demoEmail = 'farmer@agrinet.io';
+  let demoUser = await userRepo.findOne({ where: { email: demoEmail } });
+  if (!demoUser) {
+    const hashedPassword = await bcrypt.hash('password123', 10);
+    demoUser = userRepo.create({
+      first_name: 'Ravi',
+      last_name: 'Kumar',
+      email: demoEmail,
+      password: hashedPassword,
+      phone_number: '+91 98765 43210',
+      role: 'farmer',
+      preferred_language: 'en',
+    });
+    await userRepo.save(demoUser);
+    console.log(`   + User: ${demoEmail} (Password: password123)`);
+  } else {
+    console.log(`   ✓ User already exists: ${demoEmail}`);
   }
 
   console.log('\n🎉 Seeding completed successfully!');
