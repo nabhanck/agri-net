@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layers, TestTubes, ArrowRight, ArrowLeft, Check, Sparkles, AlertCircle } from 'lucide-react';
-import { useFarm } from '../../context/FarmContext';
-import { useSetVoiceScope } from '../../context/VoiceScopeContext';
-import { SOIL_PROFILES } from '../../data/agriculturalData';
-import type { SoilType } from '../../types';
+import { useFarm } from '@/context/FarmContext';
+import type { SoilType } from '@/types';
+import { SOIL_PROFILES } from '@/data/agriculturalData';
+import { useSetVoiceScope } from '@/context/VoiceScopeContext';
 
 export const SoilDetails: React.FC = () => {
   const navigate = useNavigate();
@@ -247,11 +247,10 @@ export const SoilDetails: React.FC = () => {
             <button
               type="button"
               onClick={() => setHasSoilTest(true)}
-              className={`py-3 px-4 rounded-2xl border font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                hasSoilTest === true
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
-                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
-              }`}
+              className={`py-3 px-4 rounded-2xl border font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${hasSoilTest === true
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                }`}
             >
               <span>Yes</span>
               {hasSoilTest === true && <Check className="w-4 h-4" />}
@@ -260,11 +259,10 @@ export const SoilDetails: React.FC = () => {
             <button
               type="button"
               onClick={() => setHasSoilTest(false)}
-              className={`py-3 px-4 rounded-2xl border font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                hasSoilTest === false
-                  ? 'bg-slate-800 text-white border-slate-800 shadow-md'
-                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
-              }`}
+              className={`py-3 px-4 rounded-2xl border font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${hasSoilTest === false
+                ? 'bg-slate-800 text-white border-slate-800 shadow-md'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                }`}
             >
               <span>No</span>
               {hasSoilTest === false && <Check className="w-4 h-4" />}

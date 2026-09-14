@@ -1,20 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, Mail, Phone, Lock, Globe, ArrowRight, ArrowLeft, Shield } from 'lucide-react';
+import { User, Mail, Phone, Lock, Globe, ArrowRight, ArrowLeft, Shield, Loader2 } from 'lucide-react';
 import { useFarm } from '../context/FarmContext';
 import { useSetVoiceScope } from '../context/VoiceScopeContext';
+import { signUp } from './welcome/api';
+import { toast } from '../components/ui/toast';
 import type { Language } from '../types';
 
 export const Register: React.FC = () => {
   const navigate = useNavigate();
   const { user, setUser } = useFarm();
+  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
-    firstName: user.firstName || 'Ravi',
-    lastName: user.lastName || 'Kumar',
-    email: user.email || 'ravi@example.com',
-    phone: user.phone || '+91 98765 43210',
-    password: user.password || 'SecureFarm2026!',
+    firstName: user.firstName || '',
+    lastName: user.lastName || '',
+    email: user.email || '',
+    phone: user.phone || '',
+    password: user.password || '',
     preferredLanguage: (user.preferredLanguage || 'en') as Language,
   });
 
@@ -34,25 +37,86 @@ export const Register: React.FC = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (!formData.email.trim()) newErrors.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Valid email is required';
     if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
+    if (!formData.password) newErrors.password = 'Password is required';
+    else if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!validate()) return;
+    if (isLoading) return;
 
-    setUser({
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      phone: formData.phone,
-      password: formData.password,
-      preferredLanguage: formData.preferredLanguage,
-    });
+    if (!validate()) {
+      toast.add({
+        title: 'Validation Error',
+        description: 'Please correct the highlighted errors before submitting.',
+        type: 'error',
+      });
+      return;
+    }
 
-    navigate('/onboarding/start');
+    setIsLoading(true);
+
+    try {
+      const result = await signUp({
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        phone_number: formData.phone.trim(),
+        preferredLanguage: formData.preferredLanguage,
+        role: 'farmer',
+      });
+
+      if (result.error) {
+        toast.add({
+          title: 'Sign Up Failed',
+          description: result.error.message,
+          type: 'error',
+        });
+        return;
+      }
+
+      if (result.data) {
+        toast.add({
+          title: 'Account Created',
+          description: result.data.message || 'Welcome to AgriNet! Setting up your onboarding...',
+          type: 'success',
+        });
+
+        // Persist token and user details to localStorage
+        if (result.data.access_token) {
+          localStorage.setItem('access_token', result.data.access_token);
+        }
+        if (result.data.user) {
+          localStorage.setItem('agrinet_user', JSON.stringify(result.data.user));
+        }
+
+        // Update global user state in FarmContext
+        setUser({
+          firstName: result.data.user?.first_name || formData.firstName,
+          lastName: result.data.user?.last_name || formData.lastName,
+          email: result.data.user?.email || formData.email,
+          phone: result.data.user?.phone_number || formData.phone,
+          password: formData.password,
+          preferredLanguage: (result.data.user?.preferred_language as Language) || formData.preferredLanguage,
+        });
+
+        navigate('/onboarding/start');
+      }
+    } catch (error: any) {
+      toast.add({
+        title: 'Sign Up Error',
+        description: error?.message || 'An unexpected error occurred during signup.',
+        type: 'error',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Register scoped voice assistant for Registration Form
@@ -140,7 +204,7 @@ export const Register: React.FC = () => {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form autoComplete="off" onSubmit={handleSubmit} className="space-y-4">
             {/* Name Fields Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -189,12 +253,16 @@ export const Register: React.FC = () => {
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                 <input
                   type="email"
+                  name="register_email"
+                  autoComplete='off'
+                  disabled={isLoading}
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 text-sm font-medium outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 text-sm font-medium outline-none transition-all disabled:opacity-60"
                   placeholder="ravi@example.com"
                 />
               </div>
+              {errors.email && <p className="text-xs text-rose-500 mt-1">{errors.email}</p>}
             </div>
 
             {/* Phone Number Field */}
@@ -206,10 +274,13 @@ export const Register: React.FC = () => {
                 <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                 <input
                   type="tel"
+                  name='register_phone'
+                  autoComplete='off'
                   required
+                  disabled={isLoading}
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 text-sm font-medium outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 text-sm font-medium outline-none transition-all disabled:opacity-60"
                   placeholder="+91 98765 43210"
                 />
               </div>
@@ -225,13 +296,17 @@ export const Register: React.FC = () => {
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                 <input
                   type="password"
+                  name="register_password"
+                  autoComplete="new-password"
                   required
+                  disabled={isLoading}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 text-sm font-medium outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 text-sm font-medium outline-none transition-all disabled:opacity-60"
                   placeholder="•••••••••"
                 />
               </div>
+              {errors.password && <p className="text-xs text-rose-500 mt-1">{errors.password}</p>}
             </div>
 
             {/* Preferred Language Field */}
@@ -242,11 +317,12 @@ export const Register: React.FC = () => {
               <div className="relative">
                 <Globe className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                 <select
+                  disabled={isLoading}
                   value={formData.preferredLanguage}
                   onChange={(e) =>
                     setFormData({ ...formData, preferredLanguage: e.target.value as Language })
                   }
-                  className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 text-sm font-medium outline-none transition-all appearance-none cursor-pointer"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 text-sm font-medium outline-none transition-all appearance-none cursor-pointer disabled:opacity-60"
                 >
                   {languageOptions.map((opt) => (
                     <option key={opt.code} value={opt.code}>
@@ -264,10 +340,20 @@ export const Register: React.FC = () => {
             <div className="pt-3">
               <button
                 type="submit"
-                className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-base shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all hover:scale-101 cursor-pointer"
+                disabled={isLoading}
+                className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-70 text-white font-bold text-base shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all hover:scale-101 cursor-pointer disabled:cursor-not-allowed"
               >
-                <span>Continue</span>
-                <ArrowRight className="w-4 h-4" />
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Creating account...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Continue</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </div>
           </form>

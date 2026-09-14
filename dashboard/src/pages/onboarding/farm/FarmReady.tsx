@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, ArrowRight, Sparkles, MapPin, CloudSun, Sprout, Cpu, PartyPopper } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { useFarm } from '../../context/FarmContext';
-import { useSetVoiceScope } from '../../context/VoiceScopeContext';
+import { useFarm } from '@/context/FarmContext';
+import { useSetVoiceScope } from '@/context/VoiceScopeContext';
 
 export const FarmReady: React.FC = () => {
   const navigate = useNavigate();
@@ -92,11 +92,10 @@ export const FarmReady: React.FC = () => {
         {/* Item 1: Location */}
         <div className="flex items-start gap-3.5">
           <div
-            className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${
-              checkedItems.includes(1)
+            className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${checkedItems.includes(1)
                 ? 'bg-emerald-600 text-white scale-110'
                 : 'bg-slate-200 text-slate-400 scale-90'
-            }`}
+              }`}
           >
             <CheckCircle2 className="w-4 h-4" />
           </div>
@@ -113,11 +112,10 @@ export const FarmReady: React.FC = () => {
         {/* Item 2: Weather */}
         <div className="flex items-start gap-3.5">
           <div
-            className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${
-              checkedItems.includes(2)
+            className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${checkedItems.includes(2)
                 ? 'bg-emerald-600 text-white scale-110'
                 : 'bg-slate-200 text-slate-400 scale-90'
-            }`}
+              }`}
           >
             <CheckCircle2 className="w-4 h-4" />
           </div>
@@ -134,11 +132,10 @@ export const FarmReady: React.FC = () => {
         {/* Item 3: Crop profile */}
         <div className="flex items-start gap-3.5">
           <div
-            className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${
-              checkedItems.includes(3)
+            className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${checkedItems.includes(3)
                 ? 'bg-emerald-600 text-white scale-110'
                 : 'bg-slate-200 text-slate-400 scale-90'
-            }`}
+              }`}
           >
             <CheckCircle2 className="w-4 h-4" />
           </div>
@@ -155,11 +152,10 @@ export const FarmReady: React.FC = () => {
         {/* Item 4: Advisory */}
         <div className="flex items-start gap-3.5">
           <div
-            className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${
-              checkedItems.includes(4)
+            className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${checkedItems.includes(4)
                 ? 'bg-emerald-600 text-white scale-110'
                 : 'bg-slate-200 text-slate-400 scale-90'
-            }`}
+              }`}
           >
             <CheckCircle2 className="w-4 h-4" />
           </div>

@@ -21,10 +21,29 @@ export class CreateCropDto {
   @Length(1, 100)
   name!: string;
 
-  @IsString() 
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  varieties?: string[];
+
+  @IsString()
   @IsOptional()
   @Length(1, 100)
-  variety!: string;
+  family?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(1, 100)
+  water_requirement?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(1, 100)
+  growing_season?: string;
+
+  @IsInt()
+  @IsOptional()
+  maturity_days?: number;
 
   @IsString()
   @IsOptional()

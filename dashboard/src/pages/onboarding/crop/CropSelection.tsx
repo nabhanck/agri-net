@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, ArrowRight, ArrowLeft, Check, Sparkles, Sprout } from 'lucide-react';
-import { useFarm } from '../../context/FarmContext';
-import { useSetVoiceScope } from '../../context/VoiceScopeContext';
-import { POPULAR_CROPS } from '../../data/agriculturalData';
-import type { CropInfo } from '../../types';
+import { useFarm } from '@/context/FarmContext';
+import { useSetVoiceScope } from '@/context/VoiceScopeContext';
+import { POPULAR_CROPS } from '@/data/agriculturalData';
+import type { CropInfo } from '@/types';
 
 export const CropSelection: React.FC = () => {
   const navigate = useNavigate();
@@ -158,11 +158,10 @@ export const CropSelection: React.FC = () => {
                   key={crop.id}
                   type="button"
                   onClick={() => handleSelectCrop(crop)}
-                  className={`relative p-4 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer ${
-                    isSelected
+                  className={`relative p-4 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer ${isSelected
                       ? 'bg-emerald-50/90 border-emerald-500 ring-2 ring-emerald-500/30 shadow-md shadow-emerald-600/10'
                       : 'bg-white hover:bg-slate-50 border-slate-200/90 hover:border-slate-300'
-                  }`}
+                    }`}
                 >
                   {/* Selected check badge */}
                   {isSelected && (

@@ -26,7 +26,11 @@ export const AppDataSource = new DataSource({
 export const RICE_CROP_DATA = {
   name: 'Rice',
   slug: 'rice',
-  variety: 'IR64',
+  varieties: ['IR64', 'Jyothi', 'Uma', 'Swarna', 'Basmati 1121', 'Ponni'],
+  family: 'Poaceae',
+  water_requirement: 'High',
+  growing_season: 'Kharif',
+  maturity_days: 120,
   scientific_name: 'Oryza sativa',
 };
 
@@ -387,12 +391,16 @@ export async function seedRiceIR64() {
   if (!riceCrop) {
     riceCrop = cropRepo.create(RICE_CROP_DATA);
     riceCrop = await cropRepo.save(riceCrop);
-    console.log(`   Created Crop: ${riceCrop.name} (Variety: ${riceCrop.variety}, ID: ${riceCrop.id})`);
+    console.log(`   Created Crop: ${riceCrop.name} (Varieties: ${riceCrop.varieties?.join(', ')}, ID: ${riceCrop.id})`);
   } else {
-    riceCrop.variety = RICE_CROP_DATA.variety;
+    riceCrop.varieties = RICE_CROP_DATA.varieties;
+    riceCrop.family = RICE_CROP_DATA.family;
+    riceCrop.water_requirement = RICE_CROP_DATA.water_requirement;
+    riceCrop.growing_season = RICE_CROP_DATA.growing_season;
+    riceCrop.maturity_days = RICE_CROP_DATA.maturity_days;
     riceCrop.scientific_name = RICE_CROP_DATA.scientific_name;
     riceCrop = await cropRepo.save(riceCrop);
-    console.log(`   Updated Crop: ${riceCrop.name} (Variety: ${riceCrop.variety}, ID: ${riceCrop.id})`);
+    console.log(`   Updated Crop: ${riceCrop.name} (Varieties: ${riceCrop.varieties?.join(', ')}, ID: ${riceCrop.id})`);
   }
 
   // 2. Seed Growth Stages

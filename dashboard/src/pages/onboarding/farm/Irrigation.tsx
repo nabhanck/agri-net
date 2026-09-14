@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Droplets, ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
-import { useFarm } from '../../context/FarmContext';
-import { useSetVoiceScope } from '../../context/VoiceScopeContext';
-import { IRRIGATION_OPTIONS } from '../../data/agriculturalData';
-import type { IrrigationType } from '../../types';
+import { useFarm } from '../../../context/FarmContext';
+import { useSetVoiceScope } from '../../../context/VoiceScopeContext';
+import { IRRIGATION_OPTIONS } from '../../../data/agriculturalData';
+import type { IrrigationType } from '../../../types';
 
 export const Irrigation: React.FC = () => {
   const navigate = useNavigate();
@@ -105,20 +105,18 @@ export const Irrigation: React.FC = () => {
               <label
                 key={opt.type}
                 onClick={() => setSelectedIrrigation(opt.type)}
-                className={`relative p-4 rounded-2xl border flex items-center justify-between gap-4 cursor-pointer transition-all ${
-                  isSelected
+                className={`relative p-4 rounded-2xl border flex items-center justify-between gap-4 cursor-pointer transition-all ${isSelected
                     ? 'bg-emerald-50/90 border-emerald-500 ring-2 ring-emerald-500/20 shadow-sm'
                     : 'bg-white hover:bg-slate-50 border-slate-200'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3.5">
                   {/* Radio Icon Circle */}
                   <div
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                      isSelected
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected
                         ? 'border-emerald-600 bg-emerald-600 text-white'
                         : 'border-slate-300 bg-white'
-                    }`}
+                      }`}
                   >
                     {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
                   </div>

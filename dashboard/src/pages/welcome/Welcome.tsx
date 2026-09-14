@@ -40,14 +40,14 @@ export const Welcome: React.FC = () => {
       {/* Main Container */}
       <div className="w-full max-w-2xl mx-auto text-center space-y-8 animate-in fade-in zoom-in-95 duration-500">
         {/* Brand Icon & Name */}
-        <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-emerald-100/70 border border-emerald-200/80 shadow-xs mb-2">
+        {/* <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-emerald-100/70 border border-emerald-200/80 shadow-xs mb-2">
           <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
             <Sprout className="w-5 h-5" />
           </div>
           <span className="text-sm font-bold text-emerald-900 tracking-wide uppercase">
             AgriNet Platform
           </span>
-        </div>
+        </div> */}
 
         {/* Hero Title */}
         <div className="space-y-4">
@@ -72,7 +72,7 @@ export const Welcome: React.FC = () => {
               <CloudSun className="w-6 h-6" />
             </div>
             <span className="text-sm font-bold text-slate-800 flex items-center gap-1">
-              🌦 Weather
+              Weather
             </span>
             <span className="text-[11px] text-slate-500 font-medium">Hyper-local radar</span>
           </div>
@@ -83,7 +83,7 @@ export const Welcome: React.FC = () => {
               <Satellite className="w-6 h-6" />
             </div>
             <span className="text-sm font-bold text-slate-800 flex items-center gap-1">
-              🛰 Satellite
+              Satellite
             </span>
             <span className="text-[11px] text-slate-500 font-medium">NDVI crop health</span>
           </div>
@@ -94,14 +94,15 @@ export const Welcome: React.FC = () => {
               <Sprout className="w-6 h-6" />
             </div>
             <span className="text-sm font-bold text-slate-800 flex items-center gap-1">
-              🌱 Soil
+              Soil
             </span>
             <span className="text-[11px] text-slate-500 font-medium">Moisture & pH</span>
           </div>
         </div>
 
         {/* Highlight Banner / Core Value Proposition */}
-        <div className="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-4 sm:p-5 rounded-2xl shadow-xl shadow-emerald-950/20 max-w-xl mx-auto flex items-center justify-center gap-3 border border-emerald-700/50">
+        {/* <div className="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-4 sm:p-5 rounded-2xl shadow-xl shadow-emerald-950/20 max-w-xl mx-auto flex items-center justify-center gap-3 border border-emerald-700/50"> */}
+        <div className="text-emerald-800 p-4 sm:p-5 max-w-xl mx-auto flex items-center justify-center gap-3">
           <Sparkles className="w-5 h-5 text-emerald-300 shrink-0 animate-pulse" />
           <p className="text-sm sm:text-base font-semibold tracking-wide">
             "We turn farm data into actionable decisions."
@@ -109,7 +110,7 @@ export const Welcome: React.FC = () => {
         </div>
 
         {/* Primary CTA Buttons */}
-        <div className="space-y-4 pt-2 max-w-md mx-auto">
+        <div className="space-y-4 max-w-md mx-auto">
           <Link
             to="/register"
             className="w-full py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-lg shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-3 transition-all hover:scale-102 cursor-pointer group"

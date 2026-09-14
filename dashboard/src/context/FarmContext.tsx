@@ -23,10 +23,10 @@ interface FarmContextType {
 }
 
 const DEFAULT_USER: UserProfile = {
-  firstName: 'Ravi',
-  lastName: 'Kumar',
-  email: 'ravi@example.com',
-  phone: '+91 98765 43210',
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
   preferredLanguage: 'en',
 };
 

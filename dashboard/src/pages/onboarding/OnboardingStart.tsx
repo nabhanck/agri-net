@@ -46,7 +46,7 @@ export const OnboardingStart: React.FC = () => {
       {/* Greeting & Headline */}
       <div className="space-y-3 mb-8">
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100/80 text-emerald-800 text-xs font-bold border border-emerald-200">
-          🌱 Welcome, {user.firstName || 'Farmer'}! Let's get started
+          Welcome, {user.firstName || 'Farmer'}! Let's get started
         </span>
 
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-heading">
@@ -60,33 +60,39 @@ export const OnboardingStart: React.FC = () => {
 
       {/* Value Prop Preview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg mx-auto mb-8 text-left">
-        <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100 flex items-start gap-3">
-          <div className="p-2 rounded-xl bg-emerald-600 text-white shrink-0">
-            <BellRing className="w-4 h-4" />
-          </div>
-          <div>
+        <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100 flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-emerald-600 text-white shrink-0">
+              <BellRing className="w-4 h-4" />
+            </div>
             <h4 className="text-xs font-bold text-slate-900">Weather Alerts</h4>
-            <p className="text-[11px] text-slate-500">Hyperlocal rain & frost warnings</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-center text-slate-500">Hyperlocal rain & frost warnings</p>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-teal-50/60 border border-teal-100 flex items-start gap-3">
-          <div className="p-2 rounded-xl bg-teal-600 text-white shrink-0">
-            <Compass className="w-4 h-4" />
-          </div>
-          <div>
+        <div className="p-3.5 rounded-2xl bg-teal-50/60 border border-teal-100 flex flex-col gap-3">
+          <div className='flex items-center gap-2'>
+            <div className="p-2 rounded-xl bg-teal-600 text-white shrink-0">
+              <Compass className="w-4 h-4" />
+            </div>
             <h4 className="text-xs font-bold text-slate-900">Crop Guidance</h4>
-            <p className="text-[11px] text-slate-500">Stage-specific NPK dosages</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-center text-slate-500">Stage-specific NPK dosages</p>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-sky-50/60 border border-sky-100 flex items-start gap-3">
-          <div className="p-2 rounded-xl bg-sky-600 text-white shrink-0">
-            <HeartHandshake className="w-4 h-4" />
+        <div className="p-3.5 rounded-2xl bg-sky-50/60 border border-sky-100 flex flex-col gap-3">
+          <div className='flex items-center gap-2'>
+            <div className="p-2 rounded-xl bg-sky-600 text-white shrink-0">
+              <HeartHandshake className="w-4 h-4" />
+            </div>
+            <h4 className="text-xs font-bold text-slate-900">Health Insights</h4>
           </div>
           <div>
-            <h4 className="text-xs font-bold text-slate-900">Health Insights</h4>
-            <p className="text-[11px] text-slate-500">NDVI satellite vegetation scans</p>
+            <p className="text-[11px] text-center text-slate-500">NDVI satellite vegetation scans</p>
           </div>
         </div>
       </div>
@@ -97,12 +103,12 @@ export const OnboardingStart: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsVoiceInterviewOpen(true)}
-          className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 hover:from-emerald-800 hover:to-teal-900 text-white font-bold text-lg shadow-xl shadow-emerald-700/30 flex items-center justify-center gap-3 transition-all hover:scale-102 cursor-pointer group border border-emerald-400/30"
+          className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 hover:from-emerald-800 hover:to-teal-900 text-white font-bold text-lg shadow-md shadow-emerald-700/30 flex items-center justify-center gap-3 transition-all hover:scale-102 cursor-pointer group border border-emerald-400/30"
         >
-          <div className="p-1 rounded-lg bg-emerald-500/30 text-amber-300">
+          <div className="p-1 rounded-lg bg-emerald-500/30 text-yellow-400">
             <Mic className="w-5 h-5 animate-pulse" />
           </div>
-          <span>🎙️ Start Voice Guided Setup</span>
+          <span>Start Voice Guided Setup</span>
           <Sparkles className="w-4 h-4 text-amber-300 ml-auto group-hover:rotate-12 transition-transform" />
         </button>
 

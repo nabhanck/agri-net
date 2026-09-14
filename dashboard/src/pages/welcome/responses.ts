@@ -21,8 +21,15 @@ type LoginResponse = {
   user: UserEntity;
 };
 
+type SignupResponse = {
+  message: string;
+  access_token: string;
+  user: UserEntity;
+};
+
 export type {
   WelcomePageErrorResponse,
   UserEntity,
   LoginResponse,
+  SignupResponse
 };

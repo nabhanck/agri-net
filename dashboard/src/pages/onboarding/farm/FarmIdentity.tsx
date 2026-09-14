@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Navigation, ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
-import { useFarm } from '../../context/FarmContext';
-import { useSetVoiceScope } from '../../context/VoiceScopeContext';
-import { MapPicker } from '../../components/MapPicker';
-import type { FarmSizeUnit } from '../../types';
+import { useFarm } from '../../../context/FarmContext';
+import { useSetVoiceScope } from '../../../context/VoiceScopeContext';
+import { MapPicker } from '../../../components/MapPicker';
+import type { FarmSizeUnit } from '../../../types';
 
 // Preset locations for quick searching/autocomplete
 const LOCATION_SUGGESTIONS = [

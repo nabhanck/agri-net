@@ -6,14 +6,15 @@ import { Welcome } from './pages/welcome/Welcome';
 import { Register } from './pages/Register';
 import { OnboardingLayout } from './pages/onboarding/OnboardingLayout';
 import { OnboardingStart } from './pages/onboarding/OnboardingStart';
-import { FarmIdentity } from './pages/onboarding/FarmIdentity';
-import { CropSelection } from './pages/onboarding/CropSelection';
-import { CropDetails } from './pages/onboarding/CropDetails';
-import { SoilDetails } from './pages/onboarding/SoilDetails';
-import { Irrigation } from './pages/onboarding/Irrigation';
-import { FarmingPractice } from './pages/onboarding/FarmingPractice';
-import { FarmReady } from './pages/onboarding/FarmReady';
+import { FarmIdentity } from './pages/onboarding/farm/FarmIdentity';
+import { CropSelection } from './pages/onboarding/crop/CropSelection';
+import { CropDetails } from './pages/onboarding/crop/CropDetails';
+import { SoilDetails } from './pages/onboarding/farm/SoilDetails';
+import { Irrigation } from './pages/onboarding/farm/Irrigation';
+import { FarmingPractice } from './pages/onboarding/farm/FarmingPractice';
+import { FarmReady } from './pages/onboarding/farm/FarmReady';
 import { Dashboard } from './pages/dashboard/Dashboard';
+import { Toaster } from './components/ui/toast';
 
 export function App() {
   const location = useLocation();
@@ -76,6 +77,9 @@ export function App() {
 
       {/* Global Lightweight Voice Assistant Floating Button */}
       <VoiceMicButton />
+
+      {/* Global Toast Notifications */}
+      <Toaster />
     </div>
   );
 }

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Sprout, ArrowRight, ArrowLeft, Check, Sparkles, Clock, AlertCircle } from 'lucide-react';
-import { useFarm } from '../../context/FarmContext';
-import { useSetVoiceScope } from '../../context/VoiceScopeContext';
-import { POPULAR_CROPS } from '../../data/agriculturalData';
+import { useFarm } from '../../../context/FarmContext';
+import { useSetVoiceScope } from '../../../context/VoiceScopeContext';
+import { POPULAR_CROPS } from '../../../data/agriculturalData';
 
 export const CropDetails: React.FC = () => {
   const navigate = useNavigate();
@@ -191,11 +191,10 @@ export const CropDetails: React.FC = () => {
                     key={v}
                     type="button"
                     onClick={() => handleVarietyPick(v)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                      isActive
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${isActive
                         ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                    }`}
+                      }`}
                   >
                     <span>• {v}</span>
                     {isActive && <Check className="w-3 h-3 stroke-[3]" />}
@@ -277,19 +276,17 @@ export const CropDetails: React.FC = () => {
                 <div
                   key={stageItem.stage}
                   onClick={() => setGrowthStage(stageItem.stage)}
-                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                    isCurrent
+                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${isCurrent
                       ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
                       : 'bg-white hover:bg-slate-50 border-slate-200'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                        isCurrent
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isCurrent
                           ? 'bg-emerald-600 text-white'
                           : 'bg-slate-100 text-slate-600'
-                      }`}
+                        }`}
                     >
                       {index + 1}
                     </div>
