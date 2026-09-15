@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsNotEmpty, IsOptional, IsString, Length, Matches, ValidateNested } from 'class-validator';
+import { IsArray, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Length, Matches, ValidateNested } from 'class-validator';
 import { CreateAdvisoryRuleDto } from 'src/advisory-rules/dto/create-advisory-rule.dto';
 import { CreateFarmCropDto } from 'src/farm_crops/dto/create-farm_crop.dto';
 
@@ -49,6 +49,11 @@ export class CreateCropDto {
   @IsOptional()
   @Length(1, 100)
   scientific_name?: string;
+
+  @IsArray()
+  @IsNumber({}, { each: true })
+  @IsOptional()
+  optimal_ph_range?: number[];
 
   @IsArray()
   @IsOptional()

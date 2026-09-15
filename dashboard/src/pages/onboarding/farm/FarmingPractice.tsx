@@ -67,6 +67,7 @@ export const FarmingPractice: React.FC = () => {
     }
 
     // 3. Assemble payload from Location, Crops, Variety and Stage, Soil, Irrigation and Practices
+    const primaryCropId = cropIds[0] || 1;
     const payload: CreateFarmDto = {
       user_id: userId,
       name: farm.farmName || `${farm.location.name || 'My'} Farm`,
@@ -78,6 +79,13 @@ export const FarmingPractice: React.FC = () => {
       irrigation_type: farm.irrigation || 'Rainfed',
       farming_practice: selectedPractice || farm.practice || 'Conventional',
       crop_Ids: cropIds,
+      crops: [
+        {
+          crop_id: primaryCropId,
+          variety: farm.crop?.variety || undefined,
+          planting_date: farm.crop?.plantingDate || undefined,
+        },
+      ],
     };
 
     dispatch({ type: 'CREATE_FARM_REQUEST' });

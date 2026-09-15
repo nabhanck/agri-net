@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Navigation, ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
+import { Search, MapPin, Navigation, ArrowRight, ArrowLeft, Check, Sparkles, ChevronDown, Sprout } from 'lucide-react';
 import { useFarm } from '../../../context/FarmContext';
 import { useSetVoiceScope } from '../../../context/VoiceScopeContext';
 import { MapPicker } from '../../../components/MapPicker';
@@ -21,6 +21,7 @@ export const FarmIdentity: React.FC = () => {
   const navigate = useNavigate();
   const { farm, updateFarm, updateLocation } = useFarm();
 
+  const [farmName, setFarmName] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState(
     farm.location.name ? `${farm.location.name}, ${farm.location.state}` : 'Ernakulam, Kerala'
   );
@@ -29,8 +30,14 @@ export const FarmIdentity: React.FC = () => {
   const [sizeInput, setSizeInput] = useState<string>(farm.size?.toString() || '2.0');
   const [sizeUnit, setSizeUnit] = useState<FarmSizeUnit>(farm.sizeUnit || 'hectares');
 
-  // Sync with context if updated via voice assistant
-  React.useEffect(() => {
+  // Sync with context if updated
+  // useEffect(() => {
+  //   if (farm.farmName !== undefined) {
+  //     setFarmName(farm.farmName);
+  //   }
+  // }, [farm.farmName]);
+
+  useEffect(() => {
     if (farm.size !== undefined) {
       setSizeInput(farm.size.toString());
     }
@@ -39,7 +46,7 @@ export const FarmIdentity: React.FC = () => {
     }
   }, [farm.size, farm.sizeUnit]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (farm.location?.name) {
       setSearchQuery(`${farm.location.name}, ${farm.location.state}`);
     }
@@ -64,6 +71,11 @@ export const FarmIdentity: React.FC = () => {
       latitude: loc.lat,
       longitude: loc.lng,
     });
+    if (!farmName.trim()) {
+      const defaultName = `${loc.name} Farm`;
+      setFarmName(defaultName);
+      updateFarm({ farmName: defaultName });
+    }
   };
 
   const handleUseMyLocation = () => {
@@ -86,6 +98,11 @@ export const FarmIdentity: React.FC = () => {
           longitude: Number(longitude.toFixed(4)),
         });
         setSearchQuery(`GPS Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
+        if (!farmName.trim()) {
+          const defaultName = 'My GPS Farm';
+          setFarmName(defaultName);
+          updateFarm({ farmName: defaultName });
+        }
       },
       (error) => {
         setIsLocating(false);
@@ -113,7 +130,9 @@ export const FarmIdentity: React.FC = () => {
   const handleContinue = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const parsedSize = parseFloat(sizeInput) || 2.0;
+    const resolvedName = farmName.trim() || `${farm.location.name || 'My'} Farm`;
     updateFarm({
+      farmName: resolvedName,
       size: parsedSize,
       sizeUnit: sizeUnit,
     });
@@ -127,16 +146,22 @@ export const FarmIdentity: React.FC = () => {
       scopeCategory: 'ONBOARDING_FORM',
       allowedActions: ['FILL_FORM', 'NEXT_STEP', 'PREV_STEP'],
       availableFields: [
+        { name: 'farmName', description: 'Name of the farm (e.g. Green Valley Farm, Sunrise Agro)', type: 'string' },
         { name: 'location', description: 'Farm location or city (e.g. Ernakulam, Thrissur, Mandya, Ludhiana, Nashik, Guntur, Thanjavur)', type: 'string' },
         { name: 'size', description: 'Farm size / acreage (e.g. 5, 2.5)', type: 'number' },
         { name: 'sizeUnit', description: 'Unit (hectares, acres, cents, bighas)', type: 'select' },
       ],
       sampleCommands: {
-        en: ['"Location Thrissur"', '"Farm 5 acres"', '"Next / Continue"'],
-        hi: ['"स्थान त्रिशूर"', '"खेत 5 एकड़"', '"आगे बढ़ो"'],
+        en: ['"Farm name Green Valley"', '"Location Thrissur"', '"Farm 5 acres"', '"Next / Continue"'],
+        hi: ['"खेत का नाम ग्रीन वैली"', '"स्थान त्रिशूर"', '"खेत 5 एकड़"', '"आगे बढ़ो"'],
       },
       onFieldFill: (field, value) => {
         const k = field.toLowerCase();
+        if (k.includes('name') || k.includes('farm')) {
+          setFarmName(String(value));
+          updateFarm({ farmName: String(value) });
+          return true;
+        }
         if (k.includes('size') || k.includes('acre') || k.includes('hectare')) {
           const num = typeof value === 'number' ? value : parseFloat(String(value));
           if (!isNaN(num) && num > 0) {
@@ -156,7 +181,7 @@ export const FarmIdentity: React.FC = () => {
         navigate('/onboarding/start');
       },
     },
-    [sizeInput, sizeUnit]
+    [farmName, sizeInput, sizeUnit]
   );
 
   return (
@@ -179,14 +204,36 @@ export const FarmIdentity: React.FC = () => {
           Farm setup — Step 1: Farm identity
         </span>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading mt-1">
-          Farm location
+          Farm identity & location
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Where is your farm located? Accurate coordinates power satellite imagery and hyper-local rain radar.
+          Name your farm and pinpoint its location to enable localized agronomic insights and satellite tracking.
         </p>
       </div>
 
       <form onSubmit={handleContinue} className="space-y-6">
+        {/* Farm Name Input */}
+        <div className="space-y-2">
+          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+            Farm Name
+          </label>
+          <div className="relative flex items-center">
+            <input
+              type="text"
+              value={farmName}
+              onChange={(e) => {
+                setFarmName(e.target.value);
+                updateFarm({ farmName: e.target.value });
+              }}
+              className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 text-sm font-medium outline-none transition-all shadow-xs"
+              placeholder="e.g. Green Valley Farm, Sunrise Agro, Ravi Farm"
+            />
+            <div className="absolute left-3.5 text-emerald-600">
+              <Sprout className="w-5 h-5" />
+            </div>
+          </div>
+        </div>
+
         {/* Search for your location */}
         <div className="space-y-2">
           <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
@@ -258,7 +305,7 @@ export const FarmIdentity: React.FC = () => {
             <Navigation
               className={`w-4 h-4 text-emerald-600 ${isLocating ? 'animate-spin' : ''}`}
             />
-            <span>{isLocating ? 'Detecting farm GPS...' : '📍 Use my location'}</span>
+            <span>{isLocating ? 'Detecting farm GPS...' : 'Use my location'}</span>
           </button>
         </div>
 
@@ -269,13 +316,13 @@ export const FarmIdentity: React.FC = () => {
             <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 flex flex-col justify-between">
               <div>
                 <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block mb-1">
-                  Selected Farm Location
+                  Selected Farm Identity
                 </span>
-                <p className="text-lg font-bold text-slate-900 font-heading">
-                  {farm.location.name || 'Ernakulam'}
+                <p className="text-lg font-bold text-slate-900 font-heading truncate">
+                  {farmName || farm.farmName || `${farm.location.name || 'My'} Farm`}
                 </p>
                 <p className="text-xs text-slate-600">
-                  {farm.location.state || 'Kerala'}, {farm.location.country || 'India'}
+                  {farm.location.name || 'Ernakulam'}, {farm.location.state || 'Kerala'}
                 </p>
               </div>
               <div className="mt-3 flex items-center gap-1.5 text-[11px] font-mono text-emerald-800 bg-emerald-100/80 px-2.5 py-1 rounded-lg w-fit">
@@ -305,14 +352,12 @@ export const FarmIdentity: React.FC = () => {
                     onChange={(e) => setSizeUnit(e.target.value as FarmSizeUnit)}
                     className="w-full appearance-none pl-3 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 text-sm font-semibold outline-none cursor-pointer"
                   >
-                    <option value="hectares">hectares ▼</option>
-                    <option value="acres">acres ▼</option>
-                    <option value="cents">cents ▼</option>
-                    <option value="bighas">bighas ▼</option>
+                    <option value="hectares">hectares</option>
+                    <option value="acres">acres</option>
+                    <option value="cents">cents</option>
+                    <option value="bighas">bighas</option>
                   </select>
-                  <div className="absolute right-3 top-3 text-slate-400 pointer-events-none text-xs">
-                    ▼
-                  </div>
+                  <ChevronDown className="absolute right-3 top-2.5 text-slate-500 pointer-events-none text-xs" />
                 </div>
               </div>
               <span className="text-[11px] text-slate-400 mt-2">

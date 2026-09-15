@@ -43,7 +43,7 @@ const DEFAULT_FARM: FarmProfile = {
   size: 2.0,
   sizeUnit: 'hectares',
   crop: {
-    cropId: 'rice',
+    cropId: '',
     cropName: 'Rice',
     variety: 'Jyothi',
     plantingDate: '2026-08-10',

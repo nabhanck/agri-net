@@ -32,6 +32,9 @@ export class Crop {
   @Column({ type: 'varchar', length: 100, nullable: true })
   scientific_name!: string;
 
+  @Column({ type: 'float', array: true, nullable: true })
+  optimal_ph_range!: number[];
+
   @OneToMany(() => FarmCrop, (farmCrop) => farmCrop.crop)
   farm_crops!: FarmCrop[];
 

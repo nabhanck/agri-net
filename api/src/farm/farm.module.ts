@@ -10,10 +10,11 @@ import { FarmCrop } from 'src/farm_crops/entities/farm_crop.entity';
 import { RuleEngineModule } from 'src/rule-engine/rule-engine.module';
 import { GeminiService } from 'src/AI/gemini.service';
 import { FarmCropAdvisory } from './entities/farm_crop_advisory.entity';
+import { GrowthStage } from 'src/crops-growth-stages/entities/growth-stage.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Farm, User, Crop, FarmCrop, FarmCropAdvisory]),
+    TypeOrmModule.forFeature([Farm, User, Crop, FarmCrop, FarmCropAdvisory, GrowthStage]),
     WeatherModule,
     RuleEngineModule,
   ],

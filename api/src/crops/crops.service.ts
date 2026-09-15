@@ -17,7 +17,7 @@ export class CropsService {
   ) {}
 
   async create(createCropDto: CreateCropDto) {
-    const { user_id, name, slug, varieties, family, water_requirement, growing_season, maturity_days, scientific_name } = createCropDto;
+    const { user_id, name, slug, varieties, family, water_requirement, growing_season, maturity_days, scientific_name, optimal_ph_range } = createCropDto;
 
     if(!user_id) {
       throw new NotFoundException(`Please provide a valid userId`);
@@ -37,7 +37,8 @@ export class CropsService {
       water_requirement,
       growing_season,
       maturity_days,
-      scientific_name
+      scientific_name,
+      optimal_ph_range,
     });
 
     return await this.cropRepository.save(newCrop);
@@ -52,7 +53,7 @@ export class CropsService {
   }
 
   async update(id: number, updateCropDto: UpdateCropDto) {
-    const { user_id, name, slug, varieties, family, water_requirement, growing_season, maturity_days, scientific_name } = updateCropDto;
+    const { user_id, name, slug, varieties, family, water_requirement, growing_season, maturity_days, scientific_name, optimal_ph_range } = updateCropDto;
 
     if(!user_id) {
       throw new NotFoundException(`Please provide a valid userId`);
@@ -74,6 +75,7 @@ export class CropsService {
       growing_season,
       maturity_days,
       scientific_name,
+      optimal_ph_range,
     });
 
     if(!user) {

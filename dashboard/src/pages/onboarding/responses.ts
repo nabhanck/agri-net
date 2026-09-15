@@ -1,9 +1,11 @@
-import type { FarmEntity } from "@/types/farm";
+import type { CropEntity, FarmEntity } from "@/types/farm";
 
 export type CreateFarmResponse = {
   message: string;
   data: FarmEntity;
 };
+
+export type CropsListResponse = CropEntity[];
 
 export type OnBoardingPaginationResponse = {
   total: number;

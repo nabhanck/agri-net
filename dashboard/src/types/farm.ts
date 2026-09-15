@@ -1,6 +1,16 @@
+export type CreateFarmCropDto = {
+  crop_id: number;
+  variety?: string;
+  planting_date?: string | Date;
+  growth_stage_id?: number;
+  is_active?: boolean;
+  status?: string;
+};
+
 export type CreateFarmDto = {
   user_id: number;
-  crop_Ids: number[];
+  crop_Ids?: number[];
+  crops?: CreateFarmCropDto[];
   name: string;
   latitude: number;
   longitude: number;
@@ -23,6 +33,7 @@ export type CropEntity = {
   growing_season?: string;
   maturity_days?: number;
   scientific_name?: string;
+  optimal_ph_range?: number[];
 };
 
 export type FarmCropEntity = {

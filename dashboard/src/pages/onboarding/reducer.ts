@@ -18,6 +18,15 @@ const OnBoardingReducer = (
     case 'CREATE_FARM_REQUEST_FAILED':
       return { ...state, isLoading: false, error: action.error };
 
+    case 'GET_CROPS_LIST_REQUEST':
+      return { ...state, isLoading: true, error: null };
+
+    case 'GET_CROPS_LIST_REQUEST_SUCCESS':
+      return { ...state, isLoading: false, crops: action.data, error: null };
+
+    case 'GET_CROPS_LIST_REQUEST_FAILED':
+      return { ...state, isLoading: false, error: action.error };
+
     case 'SET_PAGINATION':
       return { ...state, pageIndex: action.pageIndex, pageSize: action.pageSize };
 

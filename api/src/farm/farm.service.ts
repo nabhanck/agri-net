@@ -8,6 +8,7 @@ import { User } from 'src/user/entities/user.entity';
 import { WeatherService } from 'src/weather/weather.service';
 import { Crop } from 'src/crops/entities/crop.entity';
 import { FarmCrop } from 'src/farm_crops/entities/farm_crop.entity';
+import { GrowthStage } from 'src/crops-growth-stages/entities/growth-stage.entity';
 import { RuleEngineService } from 'src/rule-engine/rule-engine.service';
 import { CropEvaluation, CurrentData } from 'src/types/cropEvaluation';
 import { GeminiService } from 'src/AI/gemini.service';
@@ -33,6 +34,9 @@ export class FarmService {
 
     @InjectRepository(FarmCropAdvisory)
     private readonly farmCropAdvisoryRepository: Repository<FarmCropAdvisory>,
+
+    @InjectRepository(GrowthStage)
+    private growthStageRepository: Repository<GrowthStage>,
 
     private weatherService: WeatherService,
 
@@ -107,11 +111,23 @@ export class FarmService {
   }
 
   async create(createFarmDto: CreateFarmDto) {
-    const { user_id, name, latitude, longitude, area, soil_type, irrigation_type, farming_practice, crop_Ids, soilPh } = createFarmDto;
+    const {
+      user_id,
+      name,
+      latitude,
+      longitude,
+      area,
+      soil_type,
+      irrigation_type,
+      farming_practice,
+      crop_Ids,
+      crops: inputCrops,
+      soilPh,
+    } = createFarmDto;
 
-    const user = await this.userRepository.findOne({ where: { id: user_id }});
+    const user = await this.userRepository.findOne({ where: { id: user_id } });
 
-    if(!user) {
+    if (!user) {
       throw new NotFoundException(`User with ID ${user_id} not found`);
     }
 
@@ -128,48 +144,115 @@ export class FarmService {
       );
     }
 
-    // Validate crop_Ids reference real catalog crops
-    let crops: Crop[] = [];
-    if (crop_Ids?.length) {
-      crops = await this.cropRepository.findBy({ id: In(crop_Ids) });
-      if (crops.length !== crop_Ids.length) {
-        const foundIds = crops.map((c) => c.id);
-        const missing = crop_Ids.filter((id) => !foundIds.includes(id));
+    // Normalize crop input: support either crops array or legacy crop_Ids array
+    type CropItemInput = {
+      crop_id: number;
+      variety?: string;
+      planting_date?: Date | string;
+      growth_stage_id?: number;
+      is_active?: boolean;
+      status?: string;
+    };
+
+    let cropItems: CropItemInput[] = [];
+
+    if (inputCrops && Array.isArray(inputCrops) && inputCrops.length > 0) {
+      cropItems = inputCrops.map((c: any) => ({
+        crop_id: Number(c.crop_id ?? c.cropId),
+        variety: c.variety,
+        planting_date: c.planting_date ?? c.plantingDate,
+        growth_stage_id:
+          c.growth_stage_id !== undefined && c.growth_stage_id !== null
+            ? Number(c.growth_stage_id)
+            : c.growthStageId !== undefined && c.growthStageId !== null
+            ? Number(c.growthStageId)
+            : undefined,
+        is_active: c.is_active ?? c.isActive ?? true,
+        status: c.status ?? 'active',
+      }));
+    } else if (crop_Ids && Array.isArray(crop_Ids) && crop_Ids.length > 0) {
+      cropItems = crop_Ids.map((id) => ({
+        crop_id: Number(id),
+      }));
+    }
+
+    // Validate crop references
+    let catalogCrops: Crop[] = [];
+    if (cropItems.length > 0) {
+      const distinctCropIds = Array.from(new Set(cropItems.map((c) => c.crop_id)));
+      catalogCrops = await this.cropRepository.findBy({ id: In(distinctCropIds) });
+      if (catalogCrops.length !== distinctCropIds.length) {
+        const foundIds = catalogCrops.map((c) => c.id);
+        const missing = distinctCropIds.filter((id) => !foundIds.includes(id));
         throw new NotFoundException(`Crop(s) not found: ${missing.join(', ')}`);
       }
-    } 
+    }
+
+    // Validate growth stage references if provided
+    const growthStageIds = cropItems
+      .map((c) => c.growth_stage_id)
+      .filter((id): id is number => typeof id === 'number' && !isNaN(id));
+
+    if (growthStageIds.length > 0) {
+      const distinctStageIds = Array.from(new Set(growthStageIds));
+      const stages = await this.growthStageRepository.findBy({ id: In(distinctStageIds) });
+      if (stages.length !== distinctStageIds.length) {
+        const foundStageIds = stages.map((s) => s.id);
+        const missingStages = distinctStageIds.filter((id) => !foundStageIds.includes(id));
+        throw new NotFoundException(`Growth stage(s) not found: ${missingStages.join(', ')}`);
+      }
+    }
 
     const newFarm = this.farmRepository.create({
       user: user,
-      name, 
+      name,
       latitude,
       longitude,
       area,
       soil_type,
       irrigation_type,
       farming_practice,
-      soilPh
+      soilPh,
     });
 
     const savedFarm = await this.farmRepository.save(newFarm);
 
-    if (crops.length) {
-      const farmCrops = crops.map((crop) =>
-        this.farmCropRepository.create({
+    if (cropItems.length > 0) {
+      const cropMap = new Map(catalogCrops.map((c) => [c.id, c]));
+
+      const farmCrops = cropItems.map((item) => {
+        let parsedDate: Date | undefined;
+        if (item.planting_date) {
+          const d = new Date(item.planting_date);
+          if (!isNaN(d.getTime())) {
+            parsedDate = d;
+          }
+        }
+
+        return this.farmCropRepository.create({
           farm: savedFarm,
-          crop,
-        }),
-      );
+          farm_id: savedFarm.id,
+          crop: cropMap.get(item.crop_id),
+          crop_id: item.crop_id,
+          variety: item.variety,
+          planting_date: parsedDate,
+          growth_stage_id: item.growth_stage_id,
+          is_active: item.is_active ?? true,
+          status: item.status ?? 'active',
+        });
+      });
+
       await this.farmCropRepository.save(farmCrops);
     }
-    
+
     return this.farmRepository.findOne({
       where: { id: savedFarm.id },
       relations: {
         crops: {
-          crop: true
-        }
-      } 
+          crop: true,
+          growth_stage: true,
+        },
+      },
     });
   }
 
@@ -292,11 +375,32 @@ export class FarmService {
   }
 
   async findAll() {
-    return await this.farmRepository.find();
+    return await this.farmRepository.find({
+      relations: {
+        crops: {
+          crop: true,
+          growth_stage: true,
+        },
+      },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} farm`;
+  async findOne(id: number) {
+    const farm = await this.farmRepository.findOne({
+      where: { id },
+      relations: {
+        crops: {
+          crop: true,
+          growth_stage: true,
+        },
+      },
+    });
+
+    if (!farm) {
+      throw new NotFoundException(`Farm with id ${id} not found`);
+    }
+
+    return farm;
   }
 
   update(id: number, updateFarmDto: UpdateFarmDto) {
