@@ -1,22 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Sprout, ArrowRight, ArrowLeft, Check, Sparkles, Clock, AlertCircle } from 'lucide-react';
+import { Calendar, Sprout, ArrowRight, ArrowLeft, Check, Sparkles, Clock, ChevronDown, Loader2 } from 'lucide-react';
 import { useFarm } from '../../../context/FarmContext';
 import { useSetVoiceScope } from '../../../context/VoiceScopeContext';
 import { POPULAR_CROPS } from '../../../data/agriculturalData';
+import { getCropGrowthStages } from './api';
+import type { GrowthStageEntity } from '@/types/farm';
+import { CropIcon } from '@/utils/helpers';
 
 export const CropDetails: React.FC = () => {
   const navigate = useNavigate();
   const { farm, updateCrop } = useFarm();
 
   const activeCropInfo =
-    POPULAR_CROPS.find((c) => c.id === farm.crop.cropId) || POPULAR_CROPS[0];
+    POPULAR_CROPS.find(
+      (c) => c.id === farm.crop.cropId || c.name.toLowerCase() === (farm.crop.cropName || '').toLowerCase()
+    ) || POPULAR_CROPS[0];
+
+  const [growthStages, setGrowthStages] = useState<GrowthStageEntity[]>([]);
+  const [isLoadingStages, setIsLoadingStages] = useState<boolean>(false);
+  const [selectedStageId, setSelectedStageId] = useState<number | null>(farm.crop.growthStageId || null);
 
   const [selectedVariety, setSelectedVariety] = useState<string>(farm.crop.variety || 'Jyothi');
   const [customVariety, setCustomVariety] = useState<string>(farm.crop.customVariety || '');
   const [plantingDate, setPlantingDate] = useState<string>(farm.crop.plantingDate || '2026-08-10');
   const [growthStage, setGrowthStage] = useState<string>(
-    farm.crop.growthStage || activeCropInfo.growthStages[1]?.stage || 'Tillering & Vegetative'
+    farm.crop.growthStage || 'Tillering & Vegetative'
   );
 
   // Sync with context if updated via voice assistant
@@ -41,20 +50,97 @@ export const CropDetails: React.FC = () => {
 
   const daysSincePlanting = calculateDays(plantingDate);
 
-  // Suggest stage based on days
+  // Fetch growth stages from backend based on selected crop ID
   useEffect(() => {
-    let cumulative = 0;
-    for (const st of activeCropInfo.growthStages) {
-      cumulative += st.durationDays;
-      if (daysSincePlanting <= cumulative) {
-        setGrowthStage(st.stage);
-        break;
+    const fetchStages = async () => {
+      let cropIdNum = Number(farm.crop.cropId);
+      if (isNaN(cropIdNum) || cropIdNum <= 0) {
+        // Fallback to crop id 1 (Rice) if cropId is non-numeric
+        cropIdNum = 1;
+      }
+
+      setIsLoadingStages(true);
+      try {
+        const res = await getCropGrowthStages(cropIdNum);
+        if (res?.data && res.data.length > 0) {
+          // Sort growth stages in ascending order by stage_order
+          const sorted = [...res.data].sort((a, b) => (a.stage_order ?? 0) - (b.stage_order ?? 0));
+          setGrowthStages(sorted);
+
+          // Find matching stage if already set in context
+          const currentStage = sorted.find(
+            (s) => s.id === farm.crop.growthStageId || s.stage_name === farm.crop.growthStage
+          );
+
+          if (currentStage) {
+            setGrowthStage(currentStage.stage_name || '');
+            setSelectedStageId(currentStage.id);
+          } else {
+            // Auto-calculate suggested stage based on planting days
+            let cumulative = 0;
+            let autoStage = sorted[0];
+            for (const st of sorted) {
+              cumulative += st.duration_days ?? 0;
+              if (daysSincePlanting <= cumulative) {
+                autoStage = st;
+                break;
+              }
+              autoStage = st;
+            }
+            if (autoStage) {
+              setGrowthStage(autoStage.stage_name || '');
+              setSelectedStageId(autoStage.id);
+            }
+          }
+        } else {
+          // Fallback to activeCropInfo stages if API returns empty
+          const fallbackStages: GrowthStageEntity[] = activeCropInfo.growthStages.map((st, idx) => ({
+            id: idx + 1,
+            crop_id: cropIdNum,
+            stage_name: st.stage,
+            stage_order: idx + 1,
+            duration_days: st.durationDays,
+            description: st.description,
+          }));
+          setGrowthStages(fallbackStages);
+        }
+      } catch (error) {
+        console.error('Error fetching crop growth stages:', error);
+      } finally {
+        setIsLoadingStages(false);
+      }
+    };
+
+    fetchStages();
+  }, [farm.crop.cropId, farm.crop.cropName]);
+
+  // Suggest stage based on days whenever plantingDate or growthStages changes
+  useEffect(() => {
+    if (growthStages.length > 0) {
+      let cumulative = 0;
+      let matched = growthStages[0];
+      for (const st of growthStages) {
+        cumulative += st.duration_days ?? 0;
+        if (daysSincePlanting <= cumulative) {
+          matched = st;
+          break;
+        }
+        matched = st;
+      }
+      if (matched && (!selectedStageId || !growthStages.some((s) => s.id === selectedStageId))) {
+        setGrowthStage(matched.stage_name || '');
+        setSelectedStageId(matched.id);
       }
     }
-  }, [plantingDate, activeCropInfo]);
+  }, [plantingDate, growthStages]);
 
   const handleVarietyPick = (v: string) => {
     setSelectedVariety(v);
+  };
+
+  const handleStageSelect = (stageItem: GrowthStageEntity) => {
+    setGrowthStage(stageItem.stage_name || '');
+    setSelectedStageId(stageItem.id);
   };
 
   const handleContinue = (e?: React.FormEvent) => {
@@ -64,11 +150,15 @@ export const CropDetails: React.FC = () => {
       customVariety: customVariety,
       plantingDate: plantingDate,
       growthStage: growthStage,
+      growthStageId: selectedStageId ?? undefined,
       daysSincePlanting: daysSincePlanting,
       growthStageProgress: 35,
     });
     navigate('/onboarding/soil');
   };
+
+  const displayCropName = farm.crop.cropName || activeCropInfo.name || 'Rice';
+  const cropSlug = farm.crop.cropId && isNaN(Number(farm.crop.cropId)) ? farm.crop.cropId : displayCropName.toLowerCase();
 
   useSetVoiceScope(
     {
@@ -79,13 +169,18 @@ export const CropDetails: React.FC = () => {
       availableFields: [
         {
           name: 'variety',
-          description: `Variety of ${activeCropInfo.name} (${activeCropInfo.popularVarieties.join(', ')})`,
+          description: `Variety of ${displayCropName} (${activeCropInfo.popularVarieties.join(', ')})`,
           type: 'select',
           options: activeCropInfo.popularVarieties,
           example: activeCropInfo.popularVarieties[0] || 'Jyothi',
         },
         { name: 'plantingDate', description: 'Date of sowing or transplantation (YYYY-MM-DD)', type: 'string', example: '2026-08-10' },
-        { name: 'growthStage', description: 'Crop growth stage', type: 'select', options: activeCropInfo.growthStages.map((s) => s.stage) },
+        {
+          name: 'growthStage',
+          description: 'Crop growth stage',
+          type: 'select',
+          options: growthStages.map((s) => s.stage_name || ''),
+        },
       ],
       sampleCommands: {
         en: [`"Variety ${activeCropInfo.popularVarieties[0] || 'Jyothi'}"`, '"Stage Tillering"', '"Next / Continue"'],
@@ -102,9 +197,9 @@ export const CropDetails: React.FC = () => {
           return true;
         } else if (k.includes('stage')) {
           const stStr = String(value).toLowerCase();
-          const matched = activeCropInfo.growthStages.find((s) => s.stage.toLowerCase().includes(stStr));
+          const matched = growthStages.find((s) => (s.stage_name || '').toLowerCase().includes(stStr));
           if (matched) {
-            setGrowthStage(matched.stage);
+            handleStageSelect(matched);
             return true;
           }
         }
@@ -117,7 +212,7 @@ export const CropDetails: React.FC = () => {
         navigate('/onboarding/crop-selection');
       },
     },
-    [selectedVariety, customVariety, plantingDate, growthStage, daysSincePlanting, activeCropInfo]
+    [selectedVariety, customVariety, plantingDate, growthStage, daysSincePlanting, activeCropInfo, growthStages]
   );
 
   return (
@@ -140,8 +235,8 @@ export const CropDetails: React.FC = () => {
           Farm setup — Step 3 of 6
         </span>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading mt-1 flex items-center gap-2">
-          <span>{activeCropInfo.icon}</span>
-          <span>{activeCropInfo.name} details</span>
+          <span>{CropIcon(cropSlug)}</span>
+          <span>{displayCropName} details</span>
         </h1>
         <p className="text-sm text-slate-500 mt-1">
           Specify variety, sowing date, and development stage for precise advisory schedules.
@@ -153,7 +248,7 @@ export const CropDetails: React.FC = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-              {activeCropInfo.name} variety
+              {displayCropName} variety
             </label>
             <span className="text-xs text-emerald-700 font-semibold">
               Selected: {selectedVariety}
@@ -173,9 +268,7 @@ export const CropDetails: React.FC = () => {
                 </option>
               ))}
             </select>
-            <div className="absolute right-4 top-3.5 text-slate-400 pointer-events-none text-xs">
-              ▼
-            </div>
+            <ChevronDown className="absolute right-4 top-3 text-slate-400 pointer-events-none text-xs" />
           </div>
 
           {/* Popular Quick Select Pills */}
@@ -192,8 +285,8 @@ export const CropDetails: React.FC = () => {
                     type="button"
                     onClick={() => handleVarietyPick(v)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${isActive
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
                       }`}
                   >
                     <span>• {v}</span>
@@ -269,46 +362,61 @@ export const CropDetails: React.FC = () => {
           </div>
 
           {/* Growth Stages Timeline Selector */}
-          <div className="space-y-2">
-            {activeCropInfo.growthStages.map((stageItem, index) => {
-              const isCurrent = growthStage === stageItem.stage;
-              return (
-                <div
-                  key={stageItem.stage}
-                  onClick={() => setGrowthStage(stageItem.stage)}
-                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${isCurrent
+          {isLoadingStages ? (
+            <div className="p-8 bg-slate-50 rounded-2xl border border-slate-200 text-center flex flex-col items-center justify-center gap-2 text-slate-500">
+              <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+              <span className="text-xs font-semibold">Loading growth stages for {displayCropName}...</span>
+            </div>
+          ) : growthStages.length === 0 ? (
+            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-center text-slate-500 text-xs">
+              <Sprout className="w-6 h-6 mx-auto mb-1 text-slate-400" />
+              No growth stages found for this crop.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {growthStages.map((stageItem, index) => {
+                const isCurrent =
+                  (selectedStageId && stageItem.id === selectedStageId) ||
+                  growthStage === stageItem.stage_name;
+                return (
+                  <div
+                    key={stageItem.id ?? index}
+                    onClick={() => handleStageSelect(stageItem)}
+                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${isCurrent
                       ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
                       : 'bg-white hover:bg-slate-50 border-slate-200'
-                    }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isCurrent
+                      }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isCurrent
                           ? 'bg-emerald-600 text-white'
                           : 'bg-slate-100 text-slate-600'
-                        }`}
-                    >
-                      {index + 1}
+                          }`}
+                      >
+                        {stageItem.stage_order ?? index + 1}
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-900 text-sm block">
+                          {stageItem.stage_name}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {stageItem.description || 'Development phase'}
+                          {stageItem.duration_days ? ` (~${stageItem.duration_days} days)` : ''}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="font-bold text-slate-900 text-sm block">
-                        {stageItem.stage}
-                      </span>
-                      <span className="text-xs text-slate-500">
-                        {stageItem.description} (~{stageItem.durationDays} days)
-                      </span>
-                    </div>
-                  </div>
 
-                  {isCurrent && (
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-bold shadow-xs">
-                      Active Stage
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    {isCurrent && (
+                      <span className="px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-bold shadow-xs">
+                        Active Stage
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Continue Button */}

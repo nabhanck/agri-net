@@ -340,7 +340,7 @@ export const FARMING_PRACTICES: { practice: FarmingPractice; title: string; desc
 // Helper to generate localized mock weather for the given location
 export function getMockWeatherForLocation(locationName: string, state: string): WeatherData {
   const isKerala = locationName.toLowerCase().includes('ernakulam') || state.toLowerCase().includes('kerala');
-  
+
   if (isKerala) {
     return {
       temp: 29,
@@ -437,7 +437,7 @@ export function generateFarmAdvisories(farm: FarmProfile): FarmAdvisory[] {
       category: 'crop_stage',
       priority: 'high',
       title: `${crop} (${variety}) - Second Split Nitrogen Top Dressing`,
-      description: `Your crop is currently at the ${stage} stage (${farm.crop.daysSincePlanting || 12} days after planting). Tillering rate will peak in the next 7 days.`,
+      description: `Your crop is currently at the ${stage} stage (${farm.crop.daysSincePlanting || 0} days after planting). Tillering rate will peak in the next 7 days.`,
       actionableStep: `Apply Urea @ 35 kg/hectare alongside maintaining a 3-5 cm standing water layer in the field.`,
       timeframe: 'Target Window: Days 14 - 18',
       icon: '🌾',

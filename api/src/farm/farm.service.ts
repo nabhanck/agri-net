@@ -385,6 +385,18 @@ export class FarmService {
     });
   }
 
+  async findByUser(userId: number) {
+    return await this.farmRepository.find({
+      where: { user_id: userId },
+      relations: {
+        crops: {
+          crop: true,
+          growth_stage: true,
+        },
+      },
+    });
+  }
+
   async findOne(id: number) {
     const farm = await this.farmRepository.findOne({
       where: { id },

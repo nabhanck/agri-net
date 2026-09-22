@@ -36,6 +36,15 @@ export type CropEntity = {
   optimal_ph_range?: number[];
 };
 
+export type GrowthStageEntity = {
+  id: number;
+  crop_id?: number;
+  stage_name?: string;
+  stage_order?: number;
+  description?: string;
+  duration_days?: number;
+};
+
 export type FarmCropEntity = {
   id: number;
   farm_id: number;
@@ -46,6 +55,7 @@ export type FarmCropEntity = {
   is_active: boolean;
   status: string;
   growth_stage_id?: number;
+  growth_stage?: GrowthStageEntity;
 };
 
 export type FarmEntity = {
@@ -65,4 +75,4 @@ export type FarmEntity = {
   updated_at?: string | Date;
 };
 
-export type Farm = CreateFarmDto;
+export type Farm = FarmEntity;

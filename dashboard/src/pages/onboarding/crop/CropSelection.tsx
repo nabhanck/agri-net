@@ -66,11 +66,11 @@ export const CropSelection: React.FC = () => {
   );
 
   const handleSelectCrop = (crop: CropEntity) => {
-    const cropIdentifier = crop.slug || String(crop.id);
+    const cropIdentifier = String(crop.id || crop.slug);
     setSelectedCropId(cropIdentifier);
     const defaultVariety = (crop.varieties && crop.varieties[0]) || 'Standard';
     updateCrop({
-      cropId: cropIdentifier,
+      cropId: String(crop.id || crop.slug),
       cropName: crop.name,
       variety: defaultVariety,
       growthStage: 'Vegetative',
@@ -82,14 +82,14 @@ export const CropSelection: React.FC = () => {
     const activeCrop =
       cropsList.find(
         (c) =>
-          c.slug === selectedCropId ||
           String(c.id) === selectedCropId ||
+          c.slug === selectedCropId ||
           c.name.toLowerCase() === selectedCropId.toLowerCase()
       ) || cropsList[0];
 
     if (activeCrop) {
       updateCrop({
-        cropId: activeCrop.slug || String(activeCrop.id),
+        cropId: String(activeCrop.id || activeCrop.slug),
         cropName: activeCrop.name,
         variety: farm.crop.variety || (activeCrop.varieties && activeCrop.varieties[0]) || 'Standard',
       });

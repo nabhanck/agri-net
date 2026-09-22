@@ -30,14 +30,14 @@ export class WeatherService {
 
     @InjectRepository(Farm)
     private readonly farmRepository: Repository<Farm>,
-  ) {}
+  ) { }
 
   async getWeather(
     latitude: number,
     longitude: number,
     farmId: number
   ) {
-    const farmExists = await this.farmRepository.findOne({where: { id: farmId }})
+    const farmExists = await this.farmRepository.findOne({ where: { id: farmId } })
 
     if (!farmExists) {
       throw new NotFoundException(`Farm with id ${farmId} not found`);
@@ -103,6 +103,8 @@ export class WeatherService {
         'soil_moisture_0_to_1cm',
         'soil_moisture_1_to_3cm',
         'soil_moisture_3_to_9cm',
+        'soil_moisture_9_to_27cm',
+        'soil_moisture_27_to_81cm',
       ].join(','),
 
       daily: [

@@ -1,4 +1,4 @@
-import type { DashboardErrorResponse, DashboardPaginationResponse } from "./responses";
+import type { DashboardErrorResponse, DashboardPaginationResponse, WeatherResponseData } from "./responses";
 import type { UserEntity } from "../welcome/responses";
 import type { FarmProfile, FarmAdvisory, UserProfile } from "../../types";
 
@@ -6,6 +6,8 @@ type DashboardState = {
     user?: UserEntity | UserProfile | null;
     farm?: FarmProfile | null;
     advisories?: FarmAdvisory[] | null;
+    weather?: WeatherResponseData | null;
+    loading?: boolean;
     pagination?: DashboardPaginationResponse;
     pageIndex: number;
     pageSize: number;

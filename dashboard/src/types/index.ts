@@ -44,6 +44,7 @@ export interface SelectedCrop {
   customVariety?: string;
   plantingDate: string;
   growthStage: string;
+  growthStageId?: number;
   growthStageProgress: number; // 0 to 100
   daysSincePlanting: number;
   expectedHarvestDate?: string;

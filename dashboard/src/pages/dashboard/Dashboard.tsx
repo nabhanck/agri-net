@@ -24,24 +24,45 @@ import {
   Database,
   Mail,
   Phone,
+  Loader2,
+  Map,
+  Shovel,
 } from 'lucide-react';
 import { useFarm } from '../../context/FarmContext';
 import { useSetVoiceScope } from '../../context/VoiceScopeContext';
 import { AgronomistModal } from '../../components/AgronomistModal';
+import { getFarmDetails, evaluateCropGrowth, getCropGrowthStages, getWeather } from './api';
+import type { GrowthStageEntity } from '@/types/farm';
 import { DashboardReducer, initialDashboardState } from './reducer';
+import { CropIcon } from '@/utils/helpers';
+import { processSoilMoistureData } from '@/utils/weatherSoilMoisture';
 
 export const Dashboard: React.FC = () => {
   const [state, dispatch] = useReducer(DashboardReducer, initialDashboardState);
 
-  const { farm, user, weather, satelliteData, advisories, refreshAdvisories } = useFarm();
+  console.log("statee", state?.weather)
+
+  const {
+    farm,
+    user,
+    weather,
+    satelliteData,
+    advisories,
+    refreshAdvisories,
+    selectedFarmId,
+    setSelectedFarmDetails,
+    updateFarm,
+  } = useFarm();
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [completedTasks, setCompletedTasks] = useState<string[]>([]);
   const [fertilizerArea, setFertilizerArea] = useState<number>(farm.size || 2.0);
   const [showFertilizerModal, setShowFertilizerModal] = useState(false);
+  const [isLoadingFarmDetails, setIsLoadingFarmDetails] = useState<boolean>(false);
+  const [farmDetailsError, setFarmDetailsError] = useState<string | null>(null);
+  const [cropStages, setCropStages] = useState<GrowthStageEntity[]>([]);
 
-  // Sync state from LocalStorage on mount
+  // 1. Sync User data and local state on mount
   useEffect(() => {
-    // 1. Sync User data from LocalStorage
     try {
       const savedAuthUser = localStorage.getItem('agrinet_user');
       const savedContextUser = localStorage.getItem('agrinet_user_data_v1');
@@ -56,7 +77,6 @@ export const Dashboard: React.FC = () => {
       console.error('Error reading user from localStorage:', e);
     }
 
-    // 2. Sync Farm data from LocalStorage
     try {
       const savedFarm = localStorage.getItem('agrinet_farm_data_v1');
       if (savedFarm) {
@@ -67,15 +87,188 @@ export const Dashboard: React.FC = () => {
       console.error('Error reading farm from localStorage:', e);
     }
 
-    // 3. Sync Alerts/Advisories
     if (advisories && advisories.length > 0) {
       dispatch({ type: 'SET_ALERT_DATA', payload: advisories });
     }
   }, [advisories]);
 
-  // Derive active values (state from local storage takes precedence, fallback to context)
-  const activeFarm = state.farm || farm;
+  // 2. Fetch Farm Details, evaluate crop growth, and load crop growth stages whenever selectedFarmId changes
+  useEffect(() => {
+    if (!selectedFarmId) return;
+
+    let isSubscribed = true;
+    const loadFarmDetails = async () => {
+      setIsLoadingFarmDetails(true);
+      setFarmDetailsError(null);
+      try {
+        const res = await getFarmDetails(selectedFarmId);
+        if (!isSubscribed) return;
+
+        if (res?.data) {
+          const farmData = res.data;
+          setSelectedFarmDetails(farmData);
+
+          const activeCrop = farmData.crops?.[0];
+          const cropId = Number(activeCrop?.crop_id || activeCrop?.crop?.id || 1);
+          const areaNum = Number(farmData.area) || 2.0;
+          setFertilizerArea(areaNum);
+
+          // Fetch weather data for the selected farm and log response
+          const farmLat = Number(farmData.latitude) || 10.0159;
+          const farmLng = Number(farmData.longitude) || 76.3419;
+          try {
+            dispatch({ type: 'LOAD_WEATHER_DATA', loading: true });
+            const weatherRes = await getWeather(farmLat, farmLng, selectedFarmId);
+            console.log("Weather response for farm", selectedFarmId, ":", weatherRes);
+            if (weatherRes && weatherRes?.data) {
+              const processedSoil = processSoilMoistureData(weatherRes);
+              dispatch({
+                type: 'LOAD_WEATHER_DATA_SUCCESSFULL',
+                payload: {
+                  weather: weatherRes.data,
+                  hourlySoilMoisture: processedSoil.timeline,
+                  currentSoilMoisture: processedSoil.current,
+                },
+              });
+            } else if (weatherRes?.error) {
+              dispatch({
+                type: 'LOAD_WEATHER_DATA_FAILED',
+                error: weatherRes.error,
+              });
+            }
+          } catch (weatherErr: any) {
+            console.warn("Weather fetch error:", weatherErr);
+            dispatch({
+              type: 'LOAD_WEATHER_DATA_FAILED',
+              error: weatherErr,
+            });
+          }
+
+          // Fetch growth stages for this selected crop
+          let fetchedStages: GrowthStageEntity[] = [];
+          try {
+            const stagesRes = await getCropGrowthStages(cropId);
+            if (stagesRes?.data && stagesRes.data.length > 0 && isSubscribed) {
+              fetchedStages = [...stagesRes.data].sort((a, b) => (a.stage_order ?? 0) - (b.stage_order ?? 0));
+              setCropStages(fetchedStages);
+            }
+          } catch (stagesErr) {
+            console.warn('Crop growth stages fetch warning:', stagesErr);
+          }
+
+          const totalCycleDays =
+            fetchedStages.reduce((sum, s) => sum + (s.duration_days || 0), 0) || 110;
+
+          let evaluatedDays = 0;
+          let evaluatedStageName = activeCrop?.growth_stage?.stage_name || 'Tillering & Vegetative';
+          let evaluatedStageId: number | null = activeCrop?.growth_stage_id || activeCrop?.growth_stage?.id || null;
+          let evaluatedProgress = 0;
+
+          // Call evaluate/:farmCropId API from crop-growth controller
+          if (activeCrop?.id) {
+            try {
+              const evalRes = await evaluateCropGrowth(activeCrop.id);
+              console.log("evalRes", evalRes);
+              if (evalRes?.data && isSubscribed) {
+                const evalData = evalRes.data;
+                if (typeof evalData.daysSincePlanting === 'number') {
+                  evaluatedDays = evalData.daysSincePlanting;
+                }
+                if (evalData.newStage?.name) {
+                  evaluatedStageName = evalData.newStage.name;
+                }
+                if (evalData.newStage?.id) {
+                  evaluatedStageId = evalData.newStage.id;
+                }
+                evaluatedProgress = Math.min(100, Math.max(5, Math.round((evaluatedDays / totalCycleDays) * 100)));
+              }
+            } catch (evalError) {
+              console.warn('Crop growth evaluation warning:', evalError);
+            }
+          }
+
+          const updatedCropProfile = {
+            cropId: String(activeCrop?.crop_id || activeCrop?.crop?.id || '1'),
+            cropName: activeCrop?.crop?.name || 'Rice',
+            variety: activeCrop?.variety || 'Active',
+            plantingDate: activeCrop?.planting_date
+              ? String(activeCrop.planting_date).split('T')[0]
+              : '2026-08-10',
+            growthStage: evaluatedStageName,
+            growthStageId: evaluatedStageId || undefined,
+            growthStageProgress: evaluatedProgress,
+            daysSincePlanting: evaluatedDays,
+          };
+
+          const fullFarmState = {
+            ...farmData,
+            crop: updatedCropProfile,
+          };
+
+          dispatch({ type: 'SET_MY_FARM_DATA', payload: fullFarmState });
+
+          updateFarm({
+            farmName: farmData.name,
+            size: areaNum,
+            sizeUnit: (farmData.area_unit as any) || 'acres',
+            location: {
+              name: farmData.name || 'Farm',
+              district: '',
+              state: 'Kerala',
+              country: 'India',
+              latitude: Number(farmData.latitude) || 10.0159,
+              longitude: Number(farmData.longitude) || 76.3419,
+            },
+            crop: updatedCropProfile,
+            soil: {
+              soilType: (farmData.soil_type as any) || 'Clayey',
+              ph: Number(farmData.soilPh) || 6.5,
+              hasSoilTestResults: true,
+            },
+            irrigation: (farmData.irrigation_type as any) || 'Rainfed',
+            practice: (farmData.farming_practice as any) || 'Conventional',
+          });
+        } else if (res?.error) {
+          setFarmDetailsError(res.error.message);
+        }
+      } catch (err: any) {
+        if (isSubscribed) {
+          setFarmDetailsError(err.message || 'Failed to fetch farm details');
+        }
+      } finally {
+        if (isSubscribed) {
+          setIsLoadingFarmDetails(false);
+        }
+      }
+    };
+
+    loadFarmDetails();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [selectedFarmId]);
+
+  // Derive active values (state from local storage / API takes precedence, fallback to context)
+  const activeFarm = (state.farm || []) as any;
   const activeAdvisories = state.advisories || advisories;
+
+  const farmDisplayName = activeFarm?.name || activeFarm?.farmName || '';
+  const farmArea = activeFarm?.area || activeFarm?.size || fertilizerArea || 2.0;
+  const farmAreaUnit = activeFarm?.area_unit || activeFarm?.sizeUnit || '';
+  const farmCropName = activeFarm?.crop?.cropName || activeFarm?.crops?.[0]?.crop?.name || '';
+  const farmCropVariety = activeFarm?.crop?.variety || activeFarm?.crops?.[0]?.variety || '';
+  const farmGrowthStage = activeFarm?.crop?.growthStage || activeFarm?.crops?.[0]?.growth_stage?.stage_name || '';
+  const farmSoilType = activeFarm?.soil?.soilType || activeFarm?.soil_type || '';
+  const farmSoilPh = activeFarm?.soil?.ph || activeFarm?.soilPh || 6.5;
+  const farmLat = typeof (activeFarm?.location?.latitude ?? activeFarm?.latitude) === 'number'
+    ? Number(activeFarm?.location?.latitude ?? activeFarm?.latitude).toFixed(3)
+    : '';
+  const farmLng = typeof (activeFarm?.location?.longitude ?? activeFarm?.longitude) === 'number'
+    ? Number(activeFarm?.location?.longitude ?? activeFarm?.longitude).toFixed(3)
+    : '';
+  const farmLocationName = activeFarm?.location?.name || activeFarm?.name || '';
+  const farmLocationState = activeFarm?.location?.state || '';
 
   const userEntity = state.user as any;
   const displayName = userEntity?.first_name
@@ -84,11 +277,11 @@ export const Dashboard: React.FC = () => {
       ? `${userEntity.firstName} ${userEntity.lastName || ''}`.trim()
       : user.firstName
         ? `${user.firstName} ${user.lastName}`
-        : 'Farmer';
+        : '';
 
-  const userEmail = userEntity?.email || user.email || 'farmer@agrinet.io';
-  const userPhone = userEntity?.phone_number || userEntity?.phone || user.phone || '+91 98765 43210';
-  const userRole = userEntity?.role || 'farmer';
+  const userEmail = userEntity?.email || user.email || '';
+  const userPhone = userEntity?.phone_number || userEntity?.phone || user.phone || '';
+  const userRole = userEntity?.role || '';
 
   const toggleTaskDone = (id: string) => {
     setCompletedTasks((prev) =>
@@ -138,6 +331,49 @@ export const Dashboard: React.FC = () => {
   const calculatedDAP = Math.round((activeFarm.size || fertilizerArea) * 25);
   const calculatedMOP = Math.round((activeFarm.size || fertilizerArea) * 18);
 
+  const totalCycleDays =
+    cropStages.reduce((sum, s) => sum + (s.duration_days || 0), 0) || 110;
+
+  // Active growth stage index calculation
+  const activeCropStageId =
+    activeFarm?.crop?.growthStageId ||
+    activeFarm?.crops?.[0]?.growth_stage_id ||
+    activeFarm?.crops?.[0]?.growth_stage?.id;
+  const currentStageName = (farmGrowthStage || '').toLowerCase();
+
+  let activeStageIndex = -1;
+  if (cropStages.length > 0) {
+    // 1. Try finding by stage_name match
+    activeStageIndex = cropStages.findIndex((s) => {
+      const name = (s.stage_name || '').toLowerCase();
+      return (
+        name === currentStageName ||
+        (name.length > 0 && currentStageName.includes(name)) ||
+        (currentStageName.length > 0 && name.includes(currentStageName))
+      );
+    });
+
+    // 2. If not found, try by stage ID
+    if (activeStageIndex === -1 && activeCropStageId) {
+      activeStageIndex = cropStages.findIndex((s) => s.id === activeCropStageId);
+    }
+
+    // 3. If not found, compute by cumulative days
+    if (activeStageIndex === -1) {
+      let cum = 0;
+      const days = Number(activeFarm?.crop?.daysSincePlanting) || 0;
+      for (let i = 0; i < cropStages.length; i++) {
+        cum += cropStages[i].duration_days || 0;
+        if (days <= cum || i === cropStages.length - 1) {
+          activeStageIndex = i;
+          break;
+        }
+      }
+    }
+
+    if (activeStageIndex === -1) activeStageIndex = 0;
+  }
+
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-50/80 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 max-w-7xl mx-auto">
       {/* 1. Authenticated User Profile Summary Card (from LocalStorage) */}
@@ -173,11 +409,12 @@ export const Dashboard: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto text-xs">
-          <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-medium">
-            Farm: <span className="font-bold text-slate-900">{activeFarm.farmName || `${activeFarm.location.name} Farm`}</span>
+          <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-medium flex items-center gap-1.5">
+            {isLoadingFarmDetails && <Loader2 className="w-3 h-3 text-emerald-600 animate-spin" />}
+            <span>Farm: <span className="font-bold text-slate-900">{farmDisplayName}</span></span>
           </div>
           <div className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 font-medium">
-            Crop: <span className="font-bold">{activeFarm.crop.cropName || 'Rice'}</span> ({activeFarm.crop.variety || 'Active'})
+            Crop: <span className="font-bold">{farmCropName}</span> ({farmCropVariety})
           </div>
         </div>
       </div>
@@ -192,37 +429,43 @@ export const Dashboard: React.FC = () => {
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 Live Farm Telemetry
               </span>
-              <span className="text-xs text-slate-500 font-medium">
-                Last updated: Just now via Sentinel-2A & IMD Radar
-              </span>
+              {isLoadingFarmDetails ? (
+                <span className="text-xs text-emerald-700 font-semibold flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Loading farm details...
+                </span>
+              ) : (
+                <span className="text-xs text-slate-500 font-medium">
+                  Last updated: Just now via Sentinel-2A & IMD Radar
+                </span>
+              )}
             </div>
 
             <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 font-heading">
-              {activeFarm.farmName || (activeFarm.location.name ? `${activeFarm.location.name} Intelligence Cockpit` : 'Ernakulam Farm Intelligence')}
+              {farmDisplayName}
             </h1>
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs sm:text-sm text-slate-600">
               <span className="flex items-center gap-1 font-semibold text-slate-800">
                 <MapPin className="w-4 h-4 text-emerald-600" />
-                {activeFarm.location.name || 'Ernakulam'}, {activeFarm.location.state || 'Kerala'} ({typeof activeFarm.location.latitude === 'number' ? activeFarm.location.latitude.toFixed(3) : '10.016'}°N, {typeof activeFarm.location.longitude === 'number' ? activeFarm.location.longitude.toFixed(3) : '76.342'}°E)
+                {farmLocationName}{farmLocationState ? `, ${farmLocationState}` : ''} ({farmLat}°N, {farmLng}°E)
               </span>
               <span className="text-slate-300">•</span>
-              <span className="font-semibold text-slate-800">
-                📏 {activeFarm.size || '2.0'} {activeFarm.sizeUnit || 'hectares'}
+              <span className="flex items-center gap-1 font-semibold text-slate-800">
+                <Map className='w-5 h-5 text-emerald-600' /> {farmArea} {farmAreaUnit}
               </span>
               <span className="text-slate-300">•</span>
               <span className="font-semibold text-emerald-700">
-                🌾 {activeFarm.crop.cropName || 'Rice'} ({activeFarm.crop.variety || 'Jyothi'})
+                {CropIcon(farmCropName)} {farmCropName} ({farmCropVariety})
               </span>
               <span className="text-slate-300">•</span>
-              <span className="font-medium text-slate-700">
-                🌱 {activeFarm.soil.soilType || 'Clayey'} (pH {activeFarm.soil.ph || '6.5'})
+              <span className="flex items-center gap-1 font-medium text-slate-700">
+                <Shovel className='w-5 h-5 text-emerald-600' /> {farmSoilType} (pH {farmSoilPh})
               </span>
             </div>
           </div>
 
           {/* Quick Actions */}
-          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center justify-end gap-3 sm:w-auto">
             <button
               onClick={() => setIsAiModalOpen(true)}
               className="flex-1 sm:flex-initial py-3 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all hover:scale-102 cursor-pointer"
@@ -246,26 +489,56 @@ export const Dashboard: React.FC = () => {
           <div className="flex items-center justify-between text-xs font-semibold mb-2">
             <span className="text-emerald-900 font-bold flex items-center gap-1.5">
               <Sprout className="w-4 h-4 text-emerald-600" />
-              Current Stage: {activeFarm.crop.growthStage || 'Tillering & Vegetative'}
+              Current Stage: {farmGrowthStage}
             </span>
             <span className="text-slate-600">
-              Day {activeFarm.crop.daysSincePlanting || 12} of ~110 days cycle · Sown {activeFarm.crop.plantingDate || '10 Aug 2026'}
+              Day {activeFarm?.crop?.daysSincePlanting || 0} of ~{totalCycleDays} days cycle · Sown {activeFarm?.crop?.plantingDate || '10 Aug 2026'}
             </span>
           </div>
 
           <div className="w-full h-3 bg-slate-200/80 rounded-full overflow-hidden flex shadow-inner">
             <div
               className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-700"
-              style={{ width: `${activeFarm.crop.growthStageProgress || 35}%` }}
+              style={{ width: `${activeFarm?.crop?.growthStageProgress || 35}%` }}
             />
           </div>
 
-          <div className="flex justify-between text-[11px] font-medium text-slate-500 mt-2 px-1">
-            <span>1. Seedling (Day 0-20)</span>
-            <span className="font-bold text-emerald-700">▶ 2. Tillering (Active)</span>
-            <span>3. Panicle Flowering (Day 55)</span>
-            <span>4. Ripening (Day 85)</span>
-            <span>5. Harvest (Day 110)</span>
+          <div className="flex flex-wrap sm:flex-nowrap justify-between gap-2 text-[11px] font-medium text-slate-500 mt-2 px-1">
+            {cropStages.length > 0 ? (
+              cropStages.map((stage, idx) => {
+                const order = stage.stage_order ?? idx + 1;
+                const isActive = idx === activeStageIndex;
+                let startDay = 0;
+                for (let i = 0; i < idx; i++) {
+                  startDay += cropStages[i].duration_days || 0;
+                }
+                const endDay = startDay + (stage.duration_days || 0);
+
+                return (
+                  <span
+                    key={stage.id ?? idx}
+                    className={
+                      isActive
+                        ? 'font-bold text-emerald-700 flex items-center gap-1 shrink-0'
+                        : 'text-slate-500 shrink-0'
+                    }
+                  >
+                    {isActive ? '▶ ' : ''}{order}. {stage.stage_name}{' '}
+                    {isActive
+                      ? '(Active)'
+                      : `(Day ${startDay}${stage.duration_days ? `-${endDay}` : ''})`}
+                  </span>
+                );
+              })
+            ) : (
+              <>
+                <span>1. Seedling (Day 0-20)</span>
+                <span className="font-bold text-emerald-700">▶ 2. Tillering (Active)</span>
+                <span>3. Panicle Flowering (Day 55)</span>
+                <span>4. Ripening (Day 85)</span>
+                <span>5. Harvest (Day 110)</span>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -285,7 +558,7 @@ export const Dashboard: React.FC = () => {
                     Weather Intelligence
                   </h3>
                   <span className="text-[11px] text-slate-500 font-medium">
-                    Hyper-local IMD Radar · {activeFarm.location.name || 'Ernakulam'}
+                    Hyper-local IMD Radar · {farmLocationName}
                   </span>
                 </div>
               </div>
@@ -333,7 +606,7 @@ export const Dashboard: React.FC = () => {
                   Soil Moisture
                 </span>
                 <span className="text-base font-bold text-emerald-700">
-                  78% Optimal
+                  {state?.weather?.currentSoilMoisture?.soilMoisture0To1cm * 100} % Optimal
                 </span>
               </div>
             </div>
@@ -486,7 +759,7 @@ export const Dashboard: React.FC = () => {
               </h2>
             </div>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              "We turn farm data into actionable decisions." Generated specifically for your {activeFarm.crop.cropName || 'Rice'} field.
+              "We turn farm data into actionable decisions." Generated specifically for your {farmCropName} field.
             </p>
           </div>
 
@@ -600,7 +873,7 @@ export const Dashboard: React.FC = () => {
             </div>
 
             <p className="text-xs text-slate-500">
-              Calculated for <b>{activeFarm.crop.cropName || 'Rice'}</b> ({activeFarm.crop.variety || 'Jyothi'}) on <b>{activeFarm.soil.soilType || 'Clayey'}</b> soil.
+              Calculated for <b>{farmCropName}</b> ({farmCropVariety}) on <b>{farmSoilType}</b> soil.
             </p>
 
             <div>

@@ -26,6 +26,15 @@ const DashboardReducer = (
         case 'SET_ALERT_DATA':
             return { ...state, advisories: action.payload };
 
+        case 'LOAD_WEATHER_DATA':
+            return { ...state, loading: true };
+
+        case 'LOAD_WEATHER_DATA_SUCCESSFULL':
+            return { ...state, weather: action.payload, loading: false };
+
+        case 'LOAD_WEATHER_DATA_FAILED':
+            return { ...state, error: action.error, loading: false };
+
         case 'SET_PAGINATION':
             return { ...state, pageIndex: action.pageIndex, pageSize: action.pageSize };
 

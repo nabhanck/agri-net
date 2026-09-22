@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { FarmService } from './farm.service';
 import { CreateFarmDto } from './dto/create-farm.dto';
 import { UpdateFarmDto } from './dto/update-farm.dto';
@@ -17,8 +17,20 @@ export class FarmController {
   }
 
   @Get()
-  findAll() {
+  findAll(
+    @Query('user_id') userId?: string,
+    @Query('userId') userIdAlt?: string,
+  ) {
+    const targetUserId = userId || userIdAlt;
+    if (targetUserId) {
+      return this.farmService.findByUser(+targetUserId);
+    }
     return this.farmService.findAll();
+  }
+
+  @Get('user/:userId')
+  findByUser(@Param('userId') userId: string) {
+    return this.farmService.findByUser(+userId);
   }
 
   @Get(':id')

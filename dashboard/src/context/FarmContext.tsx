@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { UserProfile, FarmProfile, WeatherData, SatelliteNDVIData, FarmAdvisory, Language } from '../types';
+import type { FarmEntity } from '../types/farm';
 import { getMockWeatherForLocation, getMockSatelliteTelemetry, generateFarmAdvisories } from '../data/agriculturalData';
 
 interface FarmContextType {
@@ -20,6 +21,12 @@ interface FarmContextType {
   setLanguage: (lang: Language) => void;
   resetAll: () => void;
   fillSampleData: () => void;
+  selectedFarmId: number | null;
+  setSelectedFarmId: (id: number | null) => void;
+  farmsList: FarmEntity[];
+  setFarmsList: (farms: FarmEntity[]) => void;
+  selectedFarmDetails: FarmEntity | null;
+  setSelectedFarmDetails: (farm: FarmEntity | null) => void;
 }
 
 const DEFAULT_USER: UserProfile = {
@@ -49,7 +56,7 @@ const DEFAULT_FARM: FarmProfile = {
     plantingDate: '2026-08-10',
     growthStage: 'Tillering & Vegetative',
     growthStageProgress: 35,
-    daysSincePlanting: 12,
+    daysSincePlanting: 0,
   },
   soil: {
     soilType: 'Clayey',
@@ -70,6 +77,7 @@ const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_KEY_USER = 'agrinet_user_data_v1';
 const LOCAL_STORAGE_KEY_FARM = 'agrinet_farm_data_v1';
+const LOCAL_STORAGE_KEY_SELECTED_FARM_ID = 'agrinet_selected_farm_id';
 
 export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUserState] = useState<UserProfile>(() => {
@@ -90,6 +98,18 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
+  const [selectedFarmId, setSelectedFarmId] = useState<number | null>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY_SELECTED_FARM_ID);
+      return saved ? Number(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [farmsList, setFarmsList] = useState<FarmEntity[]>([]);
+  const [selectedFarmDetails, setSelectedFarmDetails] = useState<FarmEntity | null>(null);
+
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [language, setLanguage] = useState<Language>(user.preferredLanguage || 'en');
 
@@ -101,6 +121,14 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY_FARM, JSON.stringify(farm));
   }, [farm]);
+
+  useEffect(() => {
+    if (selectedFarmId !== null) {
+      localStorage.setItem(LOCAL_STORAGE_KEY_SELECTED_FARM_ID, String(selectedFarmId));
+    } else {
+      localStorage.removeItem(LOCAL_STORAGE_KEY_SELECTED_FARM_ID);
+    }
+  }, [selectedFarmId]);
 
   const setUser = (updates: Partial<UserProfile>) => {
     setUserState((prev) => ({ ...prev, ...updates }));
@@ -137,9 +165,13 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const resetAll = () => {
     setUserState(DEFAULT_USER);
     setFarmState(DEFAULT_FARM);
+    setSelectedFarmId(null);
+    setFarmsList([]);
+    setSelectedFarmDetails(null);
     setCurrentStep(1);
     localStorage.removeItem(LOCAL_STORAGE_KEY_USER);
     localStorage.removeItem(LOCAL_STORAGE_KEY_FARM);
+    localStorage.removeItem(LOCAL_STORAGE_KEY_SELECTED_FARM_ID);
   };
 
   const fillSampleData = () => {
@@ -179,6 +211,12 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLanguage,
         resetAll,
         fillSampleData,
+        selectedFarmId,
+        setSelectedFarmId,
+        farmsList,
+        setFarmsList,
+        selectedFarmDetails,
+        setSelectedFarmDetails,
       }}
     >
       {children}

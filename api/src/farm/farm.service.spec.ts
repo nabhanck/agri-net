@@ -111,4 +111,21 @@ describe('FarmService', () => {
     );
     expect(farmCropRepo.save).toHaveBeenCalled();
   });
+
+  it('should find all farms by user_id', async () => {
+    const mockFarms = [{ id: 1, name: 'Green Acres', user_id: 1 }];
+    farmRepo.find.mockResolvedValue(mockFarms);
+
+    const result = await service.findByUser(1);
+    expect(farmRepo.find).toHaveBeenCalledWith({
+      where: { user_id: 1 },
+      relations: {
+        crops: {
+          crop: true,
+          growth_stage: true,
+        },
+      },
+    });
+    expect(result).toEqual(mockFarms);
+  });
 });
