@@ -1,5 +1,18 @@
 import { Type } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, IsInt, IsObject, Length, Min, ValidateIf, IsNumber, ValidateNested, IsArray } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsInt,
+  IsObject,
+  IsBoolean,
+  Length,
+  Min,
+  ValidateIf,
+  IsNumber,
+  ValidateNested,
+  IsArray,
+} from 'class-validator';
 
 export class ConditionDto {
   @IsString()
@@ -71,5 +84,21 @@ export class CreateAdvisoryRuleDto {
   @IsOptional()
   @Min(0)
   priority?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  status?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isVerified?: boolean;
+
+  @IsString()
+  @IsOptional()
+  source?: string;
+
+  @IsString()
+  @IsOptional()
+  evidence?: string;
 }
 

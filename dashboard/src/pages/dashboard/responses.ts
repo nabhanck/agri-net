@@ -67,6 +67,53 @@ type DailyWeatherResponse = {
     temperature_2m_min: number;
 }
 
+type RuleEvaluation = {
+    ruleId: number | null;
+    ruleCode: string;
+    riskLevel: string;
+    riskType: string | null;
+    category: string | null;
+    priority: number | null;
+    message: string;
+};
+
+type RuleOccurrence = {
+    ruleCode: string;
+    riskLevel: string;
+    riskType: string | null;
+    category: string | null;
+    message: string;
+    occurrences: { time: string; temperature: number; humidity: number }[];
+};
+
+type CurrentDataEvaluation = {
+    temperature: number;
+    humidity: number;
+    evaluation: RuleEvaluation[] | null;
+};
+
+type HourlyDataEvaluation = {
+    time: string;
+    temperature: number;
+    humidity: number;
+    evaluation: RuleEvaluation[] | null;
+};
+
+type CropEvaluation = {
+    cropId: number | undefined;
+    growthStage: string;
+    current: CurrentDataEvaluation | null;
+    hourly: HourlyDataEvaluation[];
+    daily: any[];
+    triggeredRisks: RuleOccurrence[];
+    advisory: string | null;
+};
+
+type FarmIntelligenceResponse = {
+    farmId: number;
+    farmName: string;
+    results: CropEvaluation[];
+};
 
 export type {
     WeatherData,
@@ -76,5 +123,11 @@ export type {
     CurrentWeatherResponse,
     DailyWeatherResponse,
     DashboardPaginationResponse,
-    DashboardErrorResponse
+    DashboardErrorResponse,
+    RuleEvaluation,
+    RuleOccurrence,
+    CurrentDataEvaluation,
+    HourlyDataEvaluation,
+    CropEvaluation,
+    FarmIntelligenceResponse
 };

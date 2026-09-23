@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { VoiceMicButton } from './components/VoiceMicButton';
+import { FloatingBottomNav } from './components/FloatingBottomNav';
 import { Welcome } from './pages/welcome/Welcome';
 import { Register } from './pages/Register';
 import { OnboardingLayout } from './pages/onboarding/OnboardingLayout';
@@ -14,16 +15,23 @@ import { Irrigation } from './pages/onboarding/farm/Irrigation';
 import { FarmingPractice } from './pages/onboarding/farm/FarmingPractice';
 import { FarmReady } from './pages/onboarding/farm/FarmReady';
 import { Dashboard } from './pages/dashboard/Dashboard';
+import { RulesPage } from './pages/rules/RulesPage';
+import { PublicationsPage } from './pages/publications/PublicationsPage';
+import { useTranslation } from 'react-i18next';
 import { Toaster } from './components/ui/toast';
 
 export function App() {
+  const { t } = useTranslation();
   const location = useLocation();
-  const isDashboard = location.pathname.startsWith('/dashboard');
+  const isMainAppSection =
+    location.pathname.startsWith('/dashboard') ||
+    location.pathname.startsWith('/rules') ||
+    location.pathname.startsWith('/publications');
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-emerald-500 selection:text-white">
-      {/* Header ONLY for Dashboard */}
-      {isDashboard && <Navbar />}
+      {/* Header for Dashboard, Rules, and Publications */}
+      {isMainAppSection && <Navbar />}
 
       <main className="flex-1 flex flex-col">
         <Routes>
@@ -58,22 +66,31 @@ export function App() {
           {/* 4. Localized Intelligence Dashboard */}
           <Route path="/dashboard" element={<Dashboard />} />
 
+          {/* 5. Agronomic Rules & Decision Engine */}
+          <Route path="/rules" element={<RulesPage />} />
+
+          {/* 6. Scientific Publications & University Protocols */}
+          <Route path="/publications" element={<PublicationsPage />} />
+
           {/* Catch all fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
 
-      {/* Footer ONLY for Dashboard */}
-      {isDashboard && (
+      {/* Footer for Main App Sections */}
+      {isMainAppSection && (
         <footer className="py-4 border-t border-slate-200 bg-white/70 backdrop-blur-xs text-center text-xs text-slate-500">
           <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span>AgriNet © 2026 · Smarter decisions for healthier farms.</span>
+            <span>{t('footer.copyright')}</span>
             <span className="text-emerald-700 font-medium">
-              Weather Radar · Sentinel Satellite NDVI · Soil Telemetry
+              {t('footer.tagline')}
             </span>
           </div>
         </footer>
       )}
+
+      {/* Floating Bottom Navigation Bar (Homepage, Rules, Publications) */}
+      <FloatingBottomNav />
 
       {/* Global Lightweight Voice Assistant Floating Button */}
       <VoiceMicButton />
@@ -83,6 +100,5 @@ export function App() {
     </div>
   );
 }
-
 
 export default App;

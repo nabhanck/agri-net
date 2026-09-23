@@ -21,7 +21,21 @@ export class AdvisoryRulesService {
   ) {}
 
   async create(createAdvisoryRuleDto: CreateAdvisoryRuleDto) {
-    const {user_id, crop_id, rule_code, risk_level, risk_type, category, stage, configuration } = createAdvisoryRuleDto;
+    const {
+      user_id,
+      crop_id,
+      rule_code,
+      risk_level,
+      risk_type,
+      category,
+      stage,
+      configuration,
+      priority,
+      status,
+      isVerified,
+      source,
+      evidence,
+    } = createAdvisoryRuleDto;
 
     if(!user_id) {
       throw new NotFoundException(`Please provide a valid userId`);
@@ -41,13 +55,19 @@ export class AdvisoryRulesService {
 
     const newAdvisoryRule = this.advisoryRuleRepository.create({
       crop,
+      createdBy: user,
       rule_code,
       risk_level,
       risk_type,
       category,
       stage,
-      configuration
-    })
+      configuration,
+      ...(priority !== undefined && { priority }),
+      ...(status !== undefined && { status }),
+      ...(isVerified !== undefined && { isVerified }),
+      ...(source !== undefined && { source }),
+      ...(evidence !== undefined && { evidence }),
+    });
 
     return await this.advisoryRuleRepository.save(newAdvisoryRule);
   }
@@ -55,20 +75,36 @@ export class AdvisoryRulesService {
   async findAll() {
     return await this.advisoryRuleRepository.find({
       relations: {
-        crop: true
-      }
+        crop: true,
+        createdBy: true,
+      },
     });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} advisoryRule`;
+  async findOne(id: number) {
+    const rule = await this.advisoryRuleRepository.findOne({
+      where: { id },
+      relations: {
+        crop: true,
+        createdBy: true,
+      },
+    });
+
+    if (!rule) {
+      throw new NotFoundException(`Advisory rule with ID ${id} not found`);
+    }
+
+    return rule;
   }
 
-  update(id: number, updateAdvisoryRuleDto: UpdateAdvisoryRuleDto) {
-    return `This action updates a #${id} advisoryRule`;
+  async update(id: number, updateAdvisoryRuleDto: UpdateAdvisoryRuleDto) {
+    const rule = await this.findOne(id);
+    Object.assign(rule, updateAdvisoryRuleDto);
+    return await this.advisoryRuleRepository.save(rule);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} advisoryRule`;
+  async remove(id: number) {
+    const rule = await this.findOne(id);
+    return await this.advisoryRuleRepository.remove(rule);
   }
 }

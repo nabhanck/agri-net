@@ -1,4 +1,5 @@
 import { Crop } from "src/crops/entities/crop.entity";
+import { User } from "src/user/entities/user.entity";
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('advisory_rules')
@@ -12,6 +13,10 @@ export class AdvisoryRule {
   @ManyToOne(() => Crop, (crop) => crop, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'crop_id' })
   crop!: Crop;
+
+  @ManyToOne(() => User, (user) => user.advisoryRules, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'created_by' })
+  createdBy?: User;
 
   @Column({ type: 'varchar', length: 100 })
   stage!: string;
@@ -37,4 +42,16 @@ export class AdvisoryRule {
 
   @Column({ type: 'int', default: 0 })
   priority!: number;
+
+  @Column({ type: 'boolean', default: true })
+  status!: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  isVerified!: boolean;
+
+  @Column({ type: 'text', nullable: true })
+  source?: string;
+
+  @Column({ type: 'text', nullable: true })
+  evidence?: string;
 }

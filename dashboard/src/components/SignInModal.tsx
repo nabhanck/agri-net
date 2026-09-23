@@ -181,7 +181,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
         </form>
 
         {/* Demo farmer quick click */}
-        <div className="mt-5 pt-4 border-t border-slate-100 text-center">
+        {/* <div className="mt-5 pt-4 border-t border-slate-100 text-center">
           <button
             type="button"
             disabled={state.isLoading}
@@ -191,7 +191,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
             <span>Instant Demo: Sign in as Ravi Kumar (Ernakulam Farm)</span>
           </button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

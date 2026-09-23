@@ -1,19 +1,55 @@
 import React, { useState } from 'react';
 import { X, Send, Bot, User, Sparkles, Sprout, AlertCircle, HelpCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useFarm } from '../context/FarmContext';
+import type { DashboardState } from '@/pages/dashboard/state';
+import { askAgronomistWithGemini } from '../config/gemini';
 
 interface AgronomistModalProps {
   isOpen: boolean;
   onClose: () => void;
+  state?: DashboardState;
 }
 
-export const AgronomistModal: React.FC<AgronomistModalProps> = ({ isOpen, onClose }) => {
+export const AgronomistModal: React.FC<AgronomistModalProps> = ({ isOpen, onClose, state }) => {
+  const { t } = useTranslation();
   const { farm, weather } = useFarm();
+
+  const activeCropName =
+    state?.farm?.crop?.cropName ||
+    state?.farm?.crops?.[0]?.crop?.name
+
+  const activeVariety =
+    state?.farm?.crop?.variety ||
+    state?.farm?.crops?.[0]?.variety
+
+  const activeStage =
+    state?.farm?.crop?.growthStage ||
+    state?.farm?.crops?.[0]?.growth_stage?.stage_name
+
+  const activeSoil =
+    state?.farm?.soil_type ||
+    state?.farm?.soil?.soilType
+
+  const activeHumidity = state?.weather?.weather?.current?.relative_humidity_2m ?? weather.humidity;
+
+  const farmLocationName =
+    state?.farm?.name ||
+    farm.location.name ||
+    farm.farmName ||
+    'Your Farm';
+
   const [messages, setMessages] = useState<Array<{ sender: 'ai' | 'user'; text: string; time: string }>>([
     {
       sender: 'ai',
-      text: `Hello ${farm.location.name ? 'Farmer from ' + farm.location.name : 'Farmer'}! I am your AgriNet AI Agronomist. I have analyzed your ${farm.crop.cropName || 'Rice'} (${farm.crop.variety || 'Jyothi'}) crop at the ${farm.crop.growthStage || 'Tillering'} stage on ${farm.soil.soilType || 'Clayey'} soil. How can I assist your field today?`,
-      time: 'Just now',
+      text: t('agronomist_modal.greeting', {
+        farmer: farmLocationName ? `Farmer from ${farmLocationName}` : 'Farmer',
+        crop: activeCropName,
+        variety: activeVariety,
+        stage: activeStage,
+        soil: activeSoil,
+      }),
+      time: t('agronomist_modal.just_now'),
     },
   ]);
   const [inputValue, setInputValue] = useState('');
@@ -22,36 +58,51 @@ export const AgronomistModal: React.FC<AgronomistModalProps> = ({ isOpen, onClos
   if (!isOpen) return null;
 
   const quickPrompts = [
-    `Best fertilizer dosage for ${farm.crop.cropName || 'Rice'} at ${farm.crop.growthStage || 'Tillering'} stage?`,
-    `Will tomorrow's rain affect pesticide spraying?`,
-    `How to prevent stem borer in ${farm.soil.soilType || 'Clayey'} soil?`,
-    `Should I irrigate given the current 84% humidity?`,
+    t('agronomist_modal.prompt_fertilizer', { crop: activeCropName, stage: activeStage }),
+    t('agronomist_modal.prompt_stem_borer', { soil: activeSoil }),
+    t('agronomist_modal.prompt_irrigate', { humidity: activeHumidity }),
   ];
 
-  const handleSend = (textToSend?: string) => {
+  const handleSend = async (textToSend?: string) => {
     const prompt = textToSend || inputValue;
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || isTyping) return;
 
-    const userMsg = { sender: 'user' as const, text: prompt, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
-    setMessages((prev) => [...prev, userMsg]);
+    const userMsg = {
+      sender: 'user' as const,
+      text: prompt,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     if (!textToSend) setInputValue('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      let reply = '';
-      const lower = prompt.toLowerCase();
-
-      if (lower.includes('fertilizer') || lower.includes('dosage') || lower.includes('urea')) {
-        reply = `For your ${farm.crop.variety || 'Jyothi'} variety at ${farm.crop.growthStage || 'Tillering'} stage (Day ${farm.crop.daysSincePlanting || 12}), recommend applying Urea @ 35 kg/ha as a top-dress. Ensure a thin water film (2-3 cm) in your ${farm.soil.soilType} field before broadcasting.`;
-      } else if (lower.includes('rain') || lower.includes('spray') || lower.includes('weather')) {
-        reply = `With 65% rain probability forecasted for tomorrow in ${farm.location.name || 'Ernakulam'}, hold off on any foliar fungicide or insecticide sprays today. The chemical will wash off before systemic absorption.`;
-      } else if (lower.includes('stem borer') || lower.includes('pest')) {
-        reply = `Yellow Stem Borer moths are active during high humidity (>80%). Install 5 pheromone traps per hectare. If dead hearts exceed 5% threshold, consider Cartap Hydrochloride 4G @ 25 kg/ha or Neem oil 1500 ppm spray.`;
-      } else if (lower.includes('irrigate') || lower.includes('water')) {
-        reply = `Given your ${farm.irrigation} setup and current soil moisture saturation (78%), no irrigation is required for the next 72 hours. Let natural rainfall supply the crop needs.`;
-      } else {
-        reply = `Based on your ${farm.size} ${farm.sizeUnit} plot in ${farm.location.name} (${farm.location.state}), the crop health index (NDVI 0.74) is vigorous. Keep monitoring the vegetative tillers and maintain bund height for monsoon water conservation.`;
-      }
+    try {
+      const reply = await askAgronomistWithGemini(
+        prompt,
+        messages,
+        {
+          farmName: farmLocationName,
+          cropName: activeCropName,
+          variety: activeVariety,
+          growthStage: activeStage,
+          soilType: activeSoil,
+          soilPh: state?.farm?.soilPh || farm.soil.ph,
+          size: state?.farm?.area || farm.size,
+          sizeUnit: state?.farm?.area_unit || farm.sizeUnit,
+          irrigation: state?.farm?.irrigation_type || farm.irrigation,
+          temperature: state?.weather?.weather?.current?.temperature_2m ?? weather.temp,
+          humidity: state?.weather?.weather?.current?.relative_humidity_2m ?? weather.humidity,
+          windSpeed: state?.weather?.weather?.current?.wind_speed_10m ?? weather.windSpeedKmH,
+          rainProbability: weather.rainProbability,
+          currentRain: state?.weather?.weather?.current?.rain,
+          soilMoisture: state?.weather?.currentSoilMoisture?.soilMoisture0To1cm != null
+            ? Math.round(state.weather.currentSoilMoisture.soilMoisture0To1cm * 100)
+            : undefined,
+          triggeredRisks: state?.intelligence?.results?.flatMap((r) => r.triggeredRisks || []),
+        }
+      );
 
       setMessages((prev) => [
         ...prev,
@@ -61,8 +112,18 @@ export const AgronomistModal: React.FC<AgronomistModalProps> = ({ isOpen, onClos
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
+    } catch (err: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `Sorry, could not retrieve advice from the AI Agronomist: ${err?.message || 'Please try again.'}`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+    } finally {
       setIsTyping(false);
-    }, 800);
+    }
   };
 
   return (
@@ -76,12 +137,9 @@ export const AgronomistModal: React.FC<AgronomistModalProps> = ({ isOpen, onClos
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-base font-heading">AgriNet AI Agronomist</span>
+                <span className="font-bold text-base font-heading">{t('agronomist_modal.title')}</span>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               </div>
-              <p className="text-xs text-emerald-200">
-                Trained on ICAR, TNAU, and localized crop telemetry
-              </p>
             </div>
           </div>
 
@@ -98,32 +156,28 @@ export const AgronomistModal: React.FC<AgronomistModalProps> = ({ isOpen, onClos
           {messages.map((msg, idx) => (
             <div
               key={idx}
-              className={`flex items-start gap-2.5 ${
-                msg.sender === 'user' ? 'flex-row-reverse' : ''
-              }`}
+              className={`flex items-start gap-2.5 ${msg.sender === 'user' ? 'flex-row-reverse' : ''
+                }`}
             >
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs shrink-0 ${
-                  msg.sender === 'user'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-emerald-100 text-emerald-800'
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs shrink-0 ${msg.sender === 'user'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-emerald-100 text-emerald-800'
+                  }`}
               >
                 {msg.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
               </div>
 
               <div
-                className={`max-w-[80%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed shadow-xs ${
-                  msg.sender === 'user'
-                    ? 'bg-emerald-600 text-white rounded-tr-none'
-                    : 'bg-white text-slate-800 border border-slate-200/80 rounded-tl-none'
-                }`}
+                className={`max-w-[80%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed shadow-xs ${msg.sender === 'user'
+                  ? 'bg-emerald-600 text-white rounded-tr-none'
+                  : 'bg-white text-slate-800 border border-slate-200/80 rounded-tl-none'
+                  }`}
               >
                 <p>{msg.text}</p>
                 <span
-                  className={`block text-[10px] mt-1.5 ${
-                    msg.sender === 'user' ? 'text-emerald-100 text-right' : 'text-slate-400'
-                  }`}
+                  className={`block text-[10px] mt-1.5 ${msg.sender === 'user' ? 'text-emerald-100 text-right' : 'text-slate-400'
+                    }`}
                 >
                   {msg.time}
                 </span>
@@ -136,7 +190,7 @@ export const AgronomistModal: React.FC<AgronomistModalProps> = ({ isOpen, onClos
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" />
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.2s]" />
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.4s]" />
-              <span>Analyzing agronomic parameters...</span>
+              <span>{t('agronomist_modal.analyzing')}</span>
             </div>
           )}
         </div>
@@ -167,7 +221,7 @@ export const AgronomistModal: React.FC<AgronomistModalProps> = ({ isOpen, onClos
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask about fertilizer, pest control, weather, soil..."
+            placeholder={t('agronomist_modal.placeholder')}
             className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none"
           />
           <button

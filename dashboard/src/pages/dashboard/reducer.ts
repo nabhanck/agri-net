@@ -35,6 +35,15 @@ const DashboardReducer = (
         case 'LOAD_WEATHER_DATA_FAILED':
             return { ...state, error: action.error, loading: false };
 
+        case 'LOAD_FARM_INTELLIGENCE':
+            return { ...state, intelligenceLoading: true };
+
+        case 'LOAD_FARM_INTELLIGENCE_SUCCESSFULL':
+            return { ...state, intelligence: action.payload, intelligenceLoading: false };
+
+        case 'LOAD_FARM_INTELLIGENCE_FAILED':
+            return { ...state, error: action.error, intelligenceLoading: false };
+
         case 'SET_PAGINATION':
             return { ...state, pageIndex: action.pageIndex, pageSize: action.pageSize };
 

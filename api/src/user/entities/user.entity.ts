@@ -1,3 +1,4 @@
+import { AdvisoryRule } from "src/advisory-rules/entities/advisory-rule.entity";
 import { Farm } from "src/farm/entities/farm.entity";
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
@@ -36,4 +37,7 @@ export class User {
   // One user can own or manage multiple physical farms
   @OneToMany(() => Farm, (farm) => farm.user)
   farms!: Farm[];
+
+  @OneToMany(() => AdvisoryRule, (rule) => rule.createdBy)
+  advisoryRules!: AdvisoryRule[];
 }

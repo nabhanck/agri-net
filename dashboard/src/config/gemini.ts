@@ -237,9 +237,8 @@ YOUR TASK:
    - If slot is "irrigation": normalized method (e.g. "Rainfed", "Canal", "Borewell", "Drip", "Sprinkler")
    - If slot is "location": city or district name (e.g. "Ernakulam", "Thrissur", "Ludhiana")
 3. MULTI-SLOT CAPTURE: If the farmer provided answers for ANY OTHER slots in the same audio (e.g., "Mera naam Ramesh hai, 5 acre zameen me gehun ugata hu"), extract those other slots in the "additionalSlots" map (key-value pairs).
-4. Provide "spokenConfirmation": A short, warm, encouraging 1-sentence confirmation acknowledging the captured value(s) in ${
-      isHindi ? 'Hindi (Devanagari script)' : 'clear English'
-    }. (e.g. in Hindi: "बहुत बढ़िया, आपका नाम रवि कुमार दर्ज कर लिया गया है।" or in English: "Great, full name saved as Ravi Kumar.")
+4. Provide "spokenConfirmation": A short, warm, encouraging 1-sentence confirmation acknowledging the captured value(s) in ${isHindi ? 'Hindi (Devanagari script)' : 'clear English'
+      }. (e.g. in Hindi: "बहुत बढ़िया, आपका नाम रवि कुमार दर्ज कर लिया गया है।" or in English: "Great, full name saved as Ravi Kumar.")
 
 Return ONLY a strict JSON object:
 {
@@ -288,4 +287,201 @@ Return ONLY a strict JSON object:
       isConfidenceHigh: false,
     };
   }
+}
+
+export interface AgronomistChatContext {
+  farmName?: string;
+  cropName?: string;
+  variety?: string;
+  growthStage?: string;
+  soilType?: string;
+  soilPh?: number;
+  size?: number;
+  sizeUnit?: string;
+  irrigation?: string;
+  temperature?: number;
+  humidity?: number;
+  windSpeed?: number;
+  rainProbability?: number;
+  currentRain?: number;
+  soilMoisture?: number;
+  triggeredRisks?: any[];
+  language?: string;
+}
+
+/**
+ * Direct Agronomist Chat Assistant powered by Gemini.
+ * Takes live farm and telemetry context to generate personalized, actionable farming advice.
+ */
+export async function askAgronomistWithGemini(
+  userMessage: string,
+  chatHistory: Array<{ sender: 'ai' | 'user'; text: string }>,
+  context: AgronomistChatContext
+): Promise<string> {
+  if (!apiKey || !genAI) {
+    console.warn('VITE_GEMINI_API_KEY is not configured in environment variables.');
+    return "Gemini API key is not configured in your environment. Please set VITE_GEMINI_API_KEY.";
+  }
+
+  try {
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-3.6-flash',
+    });
+
+    const systemPrompt = `You are the AgriNet AI Agronomist, an expert Indian crop consultant providing empathetic, scientifically accurate, and actionable agricultural guidance based on ICAR, TNAU, and agronomic extension guidelines.
+
+### ACTIVE FARM & TELEMETRY PROFILE:
+- Farm Name: ${context.farmName || 'Farm'}
+- Primary Crop: ${context.cropName || 'Rice'}
+- Variety: ${context.variety || 'Active'}
+- Growth Stage: ${context.growthStage || 'Vegetative'}
+- Soil Profile: ${context.soilType || 'Clayey'}${context.soilPh ? ` (pH: ${context.soilPh})` : ''}
+- Plot Size: ${context.size ? `${context.size} ${context.sizeUnit || 'acres'}` : 'Not specified'}
+- Irrigation Method: ${context.irrigation || 'Rainfed'}
+- Live Weather: ${context.temperature != null ? `${context.temperature}°C` : 'N/A'}, ${context.humidity != null ? `${context.humidity}% Humidity` : 'N/A'}, Wind: ${context.windSpeed != null ? `${context.windSpeed} km/h` : 'N/A'}
+- Rain Risk: ${context.rainProbability != null ? `${context.rainProbability}%` : 'N/A'}${context.currentRain ? `, Precipitation: ${context.currentRain}mm` : ''}
+- Soil Moisture Saturation: ${context.soilMoisture != null ? `${context.soilMoisture}%` : 'N/A'}
+${context.triggeredRisks && context.triggeredRisks.length > 0 ? `- Active Agronomic Risk Warnings: ${JSON.stringify(context.triggeredRisks)}` : ''}
+
+### GUIDELINES FOR YOUR RESPONSE:
+1. Provide practical, step-by-step answers directly relevant to the farmer's crop, soil type, growth stage, and current weather.
+2. If discussing fertilizers, specify recommended dosage per hectare or acre (e.g. Urea, DAP, Potash, organic compost).
+3. If discussing spraying or chemical applications, factor in current rainfall probabilities and wind speed.
+4. Keep the response readable, encouraging, well-structured, and concise for mobile viewing.
+5. If the user writes in Hindi or another Indian language, respond in that language.`;
+
+    const recentHistory = chatHistory.slice(-6);
+    const formattedHistory = recentHistory
+      .map((m) => `${m.sender === 'user' ? 'Farmer' : 'AI Agronomist'}: ${m.text}`)
+      .join('\n');
+
+    const fullPrompt = `${systemPrompt}\n\n### CONVERSATION HISTORY:\n${formattedHistory}\n\nFarmer: ${userMessage}\nAI Agronomist:`;
+
+    const result = await model.generateContent(fullPrompt);
+    const responseText = result.response.text();
+    return responseText.trim();
+  } catch (error: any) {
+    console.error('Agronomist Gemini Chat Error:', error);
+    return `Sorry, I encountered an issue connecting to the agronomic model: ${error.message || 'Please try again.'}`;
+  }
+}
+
+export interface PlantDiseaseDiagnosticResult {
+  diseaseName: string;
+  scientificName?: string;
+  confidence: number;
+  severity: 'HEALTHY' | 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
+  isHealthy: boolean;
+  affectedPart?: string;
+  symptoms: string[];
+  causes: string[];
+  immediateAction: string;
+  organicRemedies: string[];
+  chemicalTreatments: string[];
+  preventiveMeasures: string[];
+  summary: string;
+}
+
+export interface DiseaseDiagnosticContext {
+  farmName?: string;
+  cropName?: string;
+  variety?: string;
+  growthStage?: string;
+  soilType?: string;
+  temperature?: number;
+  humidity?: number;
+  language?: string;
+}
+
+/**
+ * Multimodal Visual Plant Pathology & Disease Diagnostic with Gemini.
+ * Evaluates uploaded/captured plant or leaf images in the context of farm telemetry.
+ */
+export async function diagnosePlantDiseaseWithGemini(
+  base64Image: string,
+  mimeType: string = 'image/jpeg',
+  context: DiseaseDiagnosticContext = {}
+): Promise<PlantDiseaseDiagnosticResult> {
+  if (!apiKey || !genAI) {
+    throw new Error('Gemini API key is not configured in your environment. Please set VITE_GEMINI_API_KEY.');
+  }
+
+  // Strip potential data URI header
+  const cleanBase64 = base64Image.includes('base64,')
+    ? base64Image.split('base64,')[1]
+    : base64Image;
+
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-3.6-flash',
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const language = context.language || 'English';
+  const isHindi = language.toLowerCase().startsWith('hi');
+  const isMalayalam = language.toLowerCase().startsWith('ml');
+  const langPrompt = isHindi
+    ? 'All descriptive text (symptoms, causes, immediateAction, organicRemedies, chemicalTreatments, preventiveMeasures, summary) MUST be in Hindi (Devanagari script).'
+    : isMalayalam
+    ? 'All descriptive text (symptoms, causes, immediateAction, organicRemedies, chemicalTreatments, preventiveMeasures, summary) MUST be in Malayalam (മലയാളം script).'
+    : 'All descriptive text must be in clear, farmer-friendly English.';
+
+  const promptText = `You are the AgriNet AI Plant Pathologist & Visual Crop Disease Diagnostic Specialist.
+Examine this plant / leaf / crop photograph carefully in the context of the farmer's field:
+
+### FARM CONTEXT:
+- Target Crop: ${context.cropName || 'Unspecified'}
+- Variety: ${context.variety || 'Unspecified'}
+- Growth Stage: ${context.growthStage || 'Unspecified'}
+- Soil Type: ${context.soilType || 'Unspecified'}
+- Weather: ${context.temperature != null ? `${context.temperature}°C` : 'N/A'}, ${context.humidity != null ? `${context.humidity}% Humidity` : 'N/A'}
+
+### DIAGNOSIS INSTRUCTIONS:
+1. Visually diagnose whether the plant is healthy or suffering from fungal, bacterial, viral infection, pest infestation, or nutrient deficiency.
+2. If healthy, set isHealthy: true, diseaseName: "Healthy Crop", severity: "HEALTHY".
+3. If diseased, identify the exact disease or pest name (with scientific binomial name if applicable).
+4. Provide confidence percentage (50-99).
+5. Specify severity: "HEALTHY" | "LOW" | "MODERATE" | "HIGH" | "CRITICAL".
+6. Specify affectedPart (e.g. "Leaves", "Stem", "Panicle / Grain", "Fruit", "Whole Plant").
+7. List 2-4 observed visual symptoms.
+8. List 1-3 root causes.
+9. Provide 1 immediate actionable emergency step for the farmer.
+10. Provide 2-3 organic / bio-control remedies (e.g., Neem oil spray, Trichoderma harzianum, Pseudomonas fluorescens, cow urine decoction, improved drainage).
+11. Provide 1-2 chemical treatment options with safe dosage/dilution only if appropriate (e.g., Tricyclazole 75% WP @ 0.6g/L, Mancozeb @ 2g/L).
+12. List 2-3 preventive cultural/agronomic practices for the next cycle.
+13. ${langPrompt}
+
+Return ONLY a strict JSON object with this exact schema:
+{
+  "diseaseName": "<Name of disease or pest or 'Healthy Crop'>",
+  "scientificName": "<Scientific binomial name or ''>",
+  "confidence": <integer number between 50 and 99>,
+  "severity": "HEALTHY" | "LOW" | "MODERATE" | "HIGH" | "CRITICAL",
+  "isHealthy": <boolean>,
+  "affectedPart": "<string>",
+  "symptoms": ["<symptom 1>", "<symptom 2>"],
+  "causes": ["<cause 1>", "<cause 2>"],
+  "immediateAction": "<Immediate step for the farmer>",
+  "organicRemedies": ["<organic remedy 1>", "<organic remedy 2>"],
+  "chemicalTreatments": ["<chemical remedy with dosage>"],
+  "preventiveMeasures": ["<preventive measure 1>", "<preventive measure 2>"],
+  "summary": "<1-2 sentence overview for the farmer>"
+}`;
+
+  const result = await model.generateContent([
+    {
+      inlineData: {
+        mimeType: mimeType || 'image/jpeg',
+        data: cleanBase64,
+      },
+    },
+    {
+      text: promptText,
+    },
+  ]);
+
+  const responseText = result.response.text();
+  const cleanJson = responseText.replace(/```json\n?|\n?```/g, '').trim();
+  return JSON.parse(cleanJson) as PlantDiseaseDiagnosticResult;
 }

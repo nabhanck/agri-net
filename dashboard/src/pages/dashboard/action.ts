@@ -2,7 +2,7 @@
 
 import type { FarmProfile, FarmAdvisory, UserProfile } from "../../types";
 import type { UserEntity } from "../welcome/responses";
-import type { WeatherResponseData } from "./responses";
+import type { FarmIntelligenceResponse, WeatherResponseData } from "./responses";
 
 type DashboardAction =
     | { type: 'SET_USER_DATA'; payload: UserEntity | UserProfile | any }
@@ -12,6 +12,10 @@ type DashboardAction =
     | { type: 'LOAD_WEATHER_DATA'; loading: true }
     | { type: 'LOAD_WEATHER_DATA_SUCCESSFULL'; payload: WeatherResponseData | any }
     | { type: 'LOAD_WEATHER_DATA_FAILED'; error: any }
+
+    | { type: 'LOAD_FARM_INTELLIGENCE'; loading: true }
+    | { type: 'LOAD_FARM_INTELLIGENCE_SUCCESSFULL'; payload: FarmIntelligenceResponse }
+    | { type: 'LOAD_FARM_INTELLIGENCE_FAILED'; error: any }
 
     | { type: 'SET_PAGINATION'; pageIndex: number; pageSize: number }
     | { type: 'SET_SORTING'; sorting: { id: string; desc: boolean }[] }
