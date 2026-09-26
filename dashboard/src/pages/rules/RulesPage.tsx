@@ -19,10 +19,12 @@ import {
   ChevronUp,
   User,
   Clock,
+  Plus,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getAdvisoryRules } from '../dashboard/api';
 import { Badge } from '../../components/ui/badge';
+import { SuggestRuleSheet } from './SuggestRuleSheet';
 import {
   getRiskLevelBadgeColor,
   getRiskLevelText,
@@ -211,6 +213,7 @@ export const RulesPage: React.FC = () => {
   const [selectedRiskLevel, setSelectedRiskLevel] = useState<string>('ALL');
   const [verifiedOnly, setVerifiedOnly] = useState<boolean>(false);
   const [expandedRuleId, setExpandedRuleId] = useState<number | null>(null);
+  const [isSuggestSheetOpen, setIsSuggestSheetOpen] = useState<boolean>(false);
 
   // Fetch rules from backend
   const fetchRules = async () => {
@@ -234,6 +237,10 @@ export const RulesPage: React.FC = () => {
   useEffect(() => {
     fetchRules();
   }, []);
+
+  const handleRuleCreated = (newRule: AdvisoryRuleItem) => {
+    setRules((prev) => [newRule, ...prev]);
+  };
 
   // Extract unique crops & risk types for filter dropdowns
   const cropList = Array.from(new Set(rules.map((r) => r.crop?.name || 'Rice'))).filter(Boolean);
@@ -277,7 +284,7 @@ export const RulesPage: React.FC = () => {
       <div className="rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white p-6 sm:p-8 shadow-xl border border-slate-700/50 relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30 uppercase tracking-wider flex items-center gap-1.5">
@@ -296,15 +303,27 @@ export const RulesPage: React.FC = () => {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={fetchRules}
-            disabled={isLoading}
-            className="self-start md:self-auto px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>{t('common.refresh') || 'Refresh Rules'}</span>
-          </button>
+          {/* Action Button Group: Refresh button with Suggest New Rule directly below it */}
+          <div className="flex flex-col gap-2 shrink-0 self-start md:self-auto min-w-[170px]">
+            <button
+              type="button"
+              onClick={fetchRules}
+              disabled={isLoading}
+              className="w-full px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-98"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>{t('common.refresh') || 'Refresh Rules'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsSuggestSheetOpen(true)}
+              className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-slate-950 text-xs font-extrabold shadow-lg shadow-emerald-950/40 hover:shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all hover:scale-102 active:scale-98 cursor-pointer"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Suggest New Rule</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -562,6 +581,14 @@ export const RulesPage: React.FC = () => {
           })
         )}
       </div>
+
+      {/* 4. Suggest New Rule Sheet Drawer */}
+      <SuggestRuleSheet
+        isOpen={isSuggestSheetOpen}
+        onClose={() => setIsSuggestSheetOpen(false)}
+        onRuleCreated={handleRuleCreated}
+      />
     </div>
   );
 };
+

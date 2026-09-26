@@ -420,7 +420,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-50/80 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 max-w-7xl mx-auto">
       {/* 1. Authenticated User Profile Summary Card (from LocalStorage) */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-xs">
+      {/* <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-xs">
         <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-bold flex items-center justify-center text-lg shadow-md shadow-emerald-600/20 uppercase shrink-0">
             {displayName.charAt(0) || 'F'}
@@ -460,7 +460,7 @@ export const Dashboard: React.FC = () => {
             {t('navigation.crops')}: <span className="font-bold">{farmCropName}</span> ({farmCropVariety})
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* 2. Farm Overview Banner */}
       <div className="bg-white/95 backdrop-blur-md p-6 sm:p-8 rounded-3xl border border-emerald-200/80 shadow-md relative overflow-hidden bg-gradient-to-b from-emerald-50/40 via-white to-slate-50">
@@ -517,13 +517,13 @@ export const Dashboard: React.FC = () => {
               <span>{t('dashboard.ask_ai_agronomist')}</span>
             </button>
 
-            <Link
+            {/* <Link
               to="/onboarding/start"
               className="py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-700 font-semibold text-sm border border-slate-200 shadow-xs flex items-center gap-1.5 transition-colors"
             >
               <Sliders className="w-4 h-4 text-slate-500" />
               <span>{t('dashboard.adjust_parameters')}</span>
-            </Link>
+            </Link> */}
           </div>
         </div>
 

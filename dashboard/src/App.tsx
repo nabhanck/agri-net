@@ -17,16 +17,19 @@ import { FarmReady } from './pages/onboarding/farm/FarmReady';
 import { Dashboard } from './pages/dashboard/Dashboard';
 import { RulesPage } from './pages/rules/RulesPage';
 import { PublicationsPage } from './pages/publications/PublicationsPage';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { useTranslation } from 'react-i18next';
 import { Toaster } from './components/ui/toast';
 
 export function App() {
   const { t } = useTranslation();
   const location = useLocation();
+  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
   const isMainAppSection =
-    location.pathname.startsWith('/dashboard') ||
-    location.pathname.startsWith('/rules') ||
-    location.pathname.startsWith('/publications');
+    Boolean(token) &&
+    (location.pathname.startsWith('/dashboard') ||
+      location.pathname.startsWith('/rules') ||
+      location.pathname.startsWith('/publications'));
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-emerald-500 selection:text-white">
@@ -63,14 +66,35 @@ export function App() {
             <Route path="ready" element={<FarmReady />} />
           </Route>
 
-          {/* 4. Localized Intelligence Dashboard */}
-          <Route path="/dashboard" element={<Dashboard />} />
+          {/* 4. Localized Intelligence Dashboard (Protected) */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* 5. Agronomic Rules & Decision Engine */}
-          <Route path="/rules" element={<RulesPage />} />
+          {/* 5. Agronomic Rules & Decision Engine (Protected) */}
+          <Route
+            path="/rules"
+            element={
+              <ProtectedRoute>
+                <RulesPage />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* 6. Scientific Publications & University Protocols */}
-          <Route path="/publications" element={<PublicationsPage />} />
+          {/* 6. Scientific Publications & University Protocols (Protected) */}
+          <Route
+            path="/publications"
+            element={
+              <ProtectedRoute>
+                <PublicationsPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Catch all fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />

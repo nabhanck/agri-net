@@ -642,25 +642,23 @@ export const DiseaseDiagnostic: React.FC<DiseaseDiagnosticProps> = ({ state, cla
                 onLoadedMetadata={(e) => {
                   (e.target as HTMLVideoElement).play().catch((err) => console.warn('Metadata play error:', err));
                 }}
-                className={`absolute inset-0 w-full h-full object-cover ${
-                  activeFacingDetected === 'front' ? 'scale-x-[-1]' : ''
-                }`}
+                className={`absolute inset-0 w-full h-full object-cover ${activeFacingDetected === 'front' ? 'scale-x-[-1]' : ''
+                  }`}
               />
 
               {/* Detected Camera Identification Badge */}
               <div className="relative z-20 flex items-center justify-between gap-2">
                 <div className="px-3 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white text-[11px] font-semibold flex items-center gap-1.5 shadow-md">
                   <span
-                    className={`w-2 h-2 rounded-full ${
-                      activeFacingDetected === 'rear' ? 'bg-emerald-400' : 'bg-sky-400'
-                    } animate-pulse`}
+                    className={`w-2 h-2 rounded-full ${activeFacingDetected === 'rear' ? 'bg-emerald-400' : 'bg-sky-400'
+                      } animate-pulse`}
                   />
                   <span>
                     {activeFacingDetected === 'rear'
                       ? `📷 ${t('disease_diagnostic.rear_camera')}`
                       : activeFacingDetected === 'front'
-                      ? `🤳 ${t('disease_diagnostic.front_camera')}`
-                      : '📷 Camera'}
+                        ? `🤳 ${t('disease_diagnostic.front_camera')}`
+                        : '📷 Camera'}
                   </span>
                   {activeCameraLabel && (
                     <span className="hidden sm:inline-block text-[10px] text-white/70 max-w-[140px] truncate">
@@ -682,8 +680,8 @@ export const DiseaseDiagnostic: React.FC<DiseaseDiagnosticProps> = ({ state, cla
                         {cam.facing === 'rear'
                           ? `Rear: ${cam.label}`
                           : cam.facing === 'front'
-                          ? `Front: ${cam.label}`
-                          : cam.label}
+                            ? `Front: ${cam.label}`
+                            : cam.label}
                       </option>
                     ))}
                   </select>
@@ -781,7 +779,7 @@ export const DiseaseDiagnostic: React.FC<DiseaseDiagnosticProps> = ({ state, cla
           )}
 
           {/* 1-Click Sample Test Presets */}
-          <div className="pt-2">
+          {/* <div className="pt-2">
             <span className="text-xs font-semibold text-slate-500 block mb-2">
               {t('disease_diagnostic.sample_photos')}
             </span>
@@ -813,7 +811,7 @@ export const DiseaseDiagnostic: React.FC<DiseaseDiagnosticProps> = ({ state, cla
                 <span className="text-[10px] text-slate-500">Clean Chlorophyll</span>
               </button>
             </div>
-          </div>
+          </div> */}
 
           {/* Error Message */}
           {errorMessage && (
@@ -830,25 +828,23 @@ export const DiseaseDiagnostic: React.FC<DiseaseDiagnosticProps> = ({ state, cla
             <div className="space-y-4 animate-in fade-in duration-300">
               {/* Diagnosis Header Card */}
               <div
-                className={`p-5 rounded-3xl border ${
-                  isHealthy
+                className={`p-5 rounded-3xl border ${isHealthy
                     ? 'bg-emerald-50/60 border-emerald-300/80 text-emerald-950'
                     : isCritical
-                    ? 'bg-rose-50/60 border-rose-300/80 text-rose-950'
-                    : 'bg-amber-50/60 border-amber-300/80 text-amber-950'
-                }`}
+                      ? 'bg-rose-50/60 border-rose-300/80 text-rose-950'
+                      : 'bg-amber-50/60 border-amber-300/80 text-amber-950'
+                  }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span
-                        className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
-                          isHealthy
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${isHealthy
                             ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                             : isCritical
-                            ? 'bg-rose-100 text-rose-800 border-rose-300'
-                            : 'bg-amber-100 text-amber-800 border-amber-300'
-                        }`}
+                              ? 'bg-rose-100 text-rose-800 border-rose-300'
+                              : 'bg-amber-100 text-amber-800 border-amber-300'
+                          }`}
                       >
                         {diagnosticResult.severity} {t('disease_diagnostic.severity_label')}
                       </span>

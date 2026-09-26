@@ -233,6 +233,60 @@ export const getAdvisoryRules = async () => {
     }
 };
 
+export interface CreateAdvisoryRulePayload {
+    user_id: number;
+    crop_id: number;
+    stage: string;
+    risk_level: string;
+    risk_type: string;
+    rule_code: string;
+    category?: string;
+    configuration: {
+        conditions: Array<{
+            field: string;
+            operator: string;
+            value: number | string | boolean | Array<string | number>;
+        }>;
+        message: string;
+    };
+    priority?: number;
+    status?: boolean;
+    isVerified?: boolean;
+    source?: string;
+    evidence?: string;
+}
+
+export const createAdvisoryRule = async (payload: CreateAdvisoryRulePayload) => {
+    try {
+        const BASE_URL = import.meta.env.VITE_APP_BASE_URL || 'http://localhost:3000';
+        const URL = `${BASE_URL}/advisory-rules`;
+
+        const token = localStorage.getItem('access_token');
+        const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+        };
+        if (token) {
+            headers["Authorization"] = `Bearer ${token}`;
+        }
+
+        const response: AxiosResponse<any> = await axios.post(URL, payload, { headers });
+
+        if (response && response.data) {
+            return { data: response.data };
+        } else {
+            return { error: { code: 400, message: "Invalid response from server" } };
+        }
+    } catch (error: any) {
+        const status = error.response?.status || 400;
+        const serverMessage = error.response?.data?.message;
+        const message = Array.isArray(serverMessage)
+            ? serverMessage.join(', ')
+            : serverMessage || error.message || "Unable to create advisory rule";
+
+        return { error: { code: status, message } };
+    }
+};
+
 export interface MarketPriceRecord {
     id?: number;
     farm_id?: number;

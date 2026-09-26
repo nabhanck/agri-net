@@ -16,26 +16,14 @@ import {
   CheckCircle2,
   TrendingDown,
   Info,
-  ChevronRight,
   ExternalLink,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useFarm } from '../../context/FarmContext';
 import { getMarketPrices, type MarketPriceRecord, type MarketPriceResponse } from './api';
 import { CropIcon } from '@/utils/helpers';
-
-const POPULAR_COMMODITIES = [
-  'Rice',
-  'Wheat',
-  'Tomato',
-  'Potato',
-  'Onion',
-  'Maize',
-  'Cotton',
-  'Soyabean',
-  'Mustard',
-  'Banana',
-];
 
 const MAJOR_STATES = [
   'All',
@@ -63,26 +51,84 @@ export const MarketPrice: React.FC<MarketPriceProps> = () => {
   const { t } = useTranslation();
   const { farm, selectedFarmDetails } = useFarm();
 
-  // Determine initial commodity from active farm crop
-  const defaultCropName = useMemo(() => {
-    const activeCrop =
-      selectedFarmDetails?.crops?.[0]?.crop?.name ||
-      selectedFarmDetails?.crops?.[0]?.variety ||
-      farm.crop.cropName ||
-      'Rice';
+  // Extract crops belonging to the active farm
+  const farmCrops = useMemo(() => {
+    if (selectedFarmDetails?.crops && selectedFarmDetails.crops.length > 0) {
+      return selectedFarmDetails.crops.map((fc) => {
+        const rawName = fc.crop?.name || fc.variety || farm.crop?.cropName || 'Rice';
+        let normalizedName = rawName;
+        if (rawName.toLowerCase().includes('paddy') || rawName.toLowerCase().includes('rice')) {
+          normalizedName = 'Rice';
+        } else if (rawName.toLowerCase().includes('wheat')) {
+          normalizedName = 'Wheat';
+        } else if (rawName.toLowerCase().includes('tomato')) {
+          normalizedName = 'Tomato';
+        } else if (rawName.toLowerCase().includes('potato')) {
+          normalizedName = 'Potato';
+        } else if (rawName.toLowerCase().includes('onion')) {
+          normalizedName = 'Onion';
+        } else if (rawName.toLowerCase().includes('maize') || rawName.toLowerCase().includes('corn')) {
+          normalizedName = 'Maize';
+        } else if (rawName.toLowerCase().includes('cotton')) {
+          normalizedName = 'Cotton';
+        }
 
-    // Normalize common crop names
-    if (activeCrop.toLowerCase().includes('paddy') || activeCrop.toLowerCase().includes('rice')) {
-      return 'Rice';
+        return {
+          id: fc.id,
+          cropId: fc.crop_id || fc.crop?.id,
+          commodityName: normalizedName,
+          displayName: fc.crop?.name || rawName,
+          variety: fc.variety,
+          growthStage: fc.growth_stage?.stage_name,
+        };
+      });
     }
-    if (activeCrop.toLowerCase().includes('wheat')) return 'Wheat';
-    if (activeCrop.toLowerCase().includes('tomato')) return 'Tomato';
-    if (activeCrop.toLowerCase().includes('potato')) return 'Potato';
-    if (activeCrop.toLowerCase().includes('onion')) return 'Onion';
-    if (activeCrop.toLowerCase().includes('maize') || activeCrop.toLowerCase().includes('corn')) return 'Maize';
-    if (activeCrop.toLowerCase().includes('cotton')) return 'Cotton';
-    return activeCrop;
-  }, [selectedFarmDetails, farm.crop.cropName]);
+
+    const fallbackRaw = farm.crop?.cropName || 'Rice';
+    let normalized = fallbackRaw;
+    if (fallbackRaw.toLowerCase().includes('paddy') || fallbackRaw.toLowerCase().includes('rice')) {
+      normalized = 'Rice';
+    } else if (fallbackRaw.toLowerCase().includes('wheat')) {
+      normalized = 'Wheat';
+    } else if (fallbackRaw.toLowerCase().includes('tomato')) {
+      normalized = 'Tomato';
+    } else if (fallbackRaw.toLowerCase().includes('potato')) {
+      normalized = 'Potato';
+    } else if (fallbackRaw.toLowerCase().includes('onion')) {
+      normalized = 'Onion';
+    } else if (fallbackRaw.toLowerCase().includes('maize') || fallbackRaw.toLowerCase().includes('corn')) {
+      normalized = 'Maize';
+    } else if (fallbackRaw.toLowerCase().includes('cotton')) {
+      normalized = 'Cotton';
+    }
+
+    return [
+      {
+        id: undefined,
+        cropId: farm.crop?.cropId,
+        commodityName: normalized,
+        displayName: fallbackRaw,
+        variety: farm.crop?.variety,
+        growthStage: farm.crop?.growthStage,
+      },
+    ];
+  }, [selectedFarmDetails, farm.crop]);
+
+  const [selectedCropIndex, setSelectedCropIndex] = useState<number>(0);
+
+  // Keep index valid if farm crops update
+  useEffect(() => {
+    if (selectedCropIndex >= farmCrops.length) {
+      setSelectedCropIndex(0);
+    }
+  }, [farmCrops.length, selectedCropIndex]);
+
+  const currentCrop = farmCrops[selectedCropIndex] || farmCrops[0] || {
+    commodityName: 'Rice',
+    displayName: 'Rice',
+  };
+
+  const selectedCommodity = currentCrop.commodityName;
 
   const defaultState = useMemo(() => {
     return (
@@ -93,29 +139,26 @@ export const MarketPrice: React.FC<MarketPriceProps> = () => {
     );
   }, [selectedFarmDetails, farm.location?.state]);
 
-  const [selectedCommodity, setSelectedCommodity] = useState<string>(defaultCropName);
-  const [customCommodityInput, setCustomCommodityInput] = useState<string>('');
   const [selectedState, setSelectedState] = useState<string>(defaultState);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<'price_desc' | 'price_asc' | 'market_asc' | 'date_desc'>('price_desc');
-  
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [priceData, setPriceData] = useState<MarketPriceResponse | null>(null);
-
-  // Sync with farm crop changes
-  useEffect(() => {
-    if (defaultCropName) {
-      setSelectedCommodity(defaultCropName);
-    }
-  }, [defaultCropName]);
 
   useEffect(() => {
     if (defaultState && defaultState !== 'All') {
       setSelectedState(defaultState);
     }
   }, [defaultState]);
+
+  // Reset expansion when crop, state, or search changes
+  useEffect(() => {
+    setIsExpanded(false);
+  }, [selectedCommodity, selectedState, searchQuery]);
 
   // Fetch prices when commodity, state or farm changes
   const fetchPrices = async (isManualRefresh = false) => {
@@ -130,8 +173,9 @@ export const MarketPrice: React.FC<MarketPriceProps> = () => {
 
     try {
       const activeFarmId = selectedFarmDetails?.id;
-      const activeCropId = selectedFarmDetails?.crops?.[0]?.crop_id || selectedFarmDetails?.crops?.[0]?.crop?.id;
-      const activeFarmCropId = selectedFarmDetails?.crops?.[0]?.id;
+      const parsedCropId = currentCrop.cropId ? Number(currentCrop.cropId) : undefined;
+      const activeCropId = parsedCropId && !isNaN(parsedCropId) ? parsedCropId : undefined;
+      const activeFarmCropId = currentCrop.id;
 
       const res = await getMarketPrices({
         commodity: selectedCommodity.trim(),
@@ -159,19 +203,7 @@ export const MarketPrice: React.FC<MarketPriceProps> = () => {
 
   useEffect(() => {
     fetchPrices(false);
-  }, [selectedCommodity, selectedState]);
-
-  const handleSelectCommodity = (commodity: string) => {
-    setSelectedCommodity(commodity);
-    setCustomCommodityInput('');
-  };
-
-  const handleCustomCommoditySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (customCommodityInput.trim()) {
-      setSelectedCommodity(customCommodityInput.trim());
-    }
-  };
+  }, [selectedCommodity, selectedState, currentCrop.cropId, currentCrop.id, selectedFarmDetails?.id]);
 
   // Filter and sort records
   const filteredRecords = useMemo(() => {
@@ -210,6 +242,12 @@ export const MarketPrice: React.FC<MarketPriceProps> = () => {
     return records;
   }, [priceData, searchQuery, sortBy]);
 
+  const INITIAL_DISPLAY_COUNT = 10;
+  const displayedRecords = useMemo(() => {
+    if (isExpanded) return filteredRecords;
+    return filteredRecords.slice(0, INITIAL_DISPLAY_COUNT);
+  }, [filteredRecords, isExpanded]);
+
   const averageModalPrice = priceData?.averageModalPrice || 0;
   const minModalPrice = priceData?.minModalPrice || 0;
   const maxModalPrice = priceData?.maxModalPrice || 0;
@@ -233,8 +271,8 @@ export const MarketPrice: React.FC<MarketPriceProps> = () => {
               {dataSource === 'live_government_api'
                 ? 'Agmarknet Live'
                 : dataSource === 'cache'
-                ? 'Cached Gov Data'
-                : 'Mandi Sync'}
+                  ? 'Cached Gov Data'
+                  : 'Mandi Sync'}
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
@@ -251,7 +289,7 @@ export const MarketPrice: React.FC<MarketPriceProps> = () => {
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             <span>Ministry of Agriculture</span>
           </span>
-          <button
+          {/* <button
             onClick={() => fetchPrices(true)}
             disabled={isLoading || isRefreshing}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-800 border border-emerald-200 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
@@ -259,58 +297,69 @@ export const MarketPrice: React.FC<MarketPriceProps> = () => {
           >
             <RefreshCw className={`w-3.5 h-3.5 text-emerald-700 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span>{isRefreshing ? t('common.loading', 'Updating...') : t('dashboard.refresh_mandi', 'Sync Live Prices')}</span>
-          </button>
+          </button> */}
         </div>
       </div>
 
-      {/* Commodity Selector Chips & Search Bar */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-            <Store className="w-3.5 h-3.5 text-emerald-600" />
-            <span>{t('dashboard.select_commodity', 'Select Crop Commodity')}</span>
-          </span>
-          <span className="text-xs text-slate-400 font-medium">
-            Active: <strong className="text-emerald-700 font-bold">{selectedCommodity}</strong>
-          </span>
+      {/* Farm Crop Header Card */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100/80 flex items-center justify-center text-2xl shrink-0 shadow-2xs">
+            {CropIcon(currentCrop.commodityName)}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                {t('dashboard.farm_crop', 'Farm Crop')}
+              </span>
+              {currentCrop.variety && (
+                <span className="text-xs text-slate-500 font-medium">
+                  {t('dashboard.variety', 'Variety')}: <span className="font-semibold text-slate-700">{currentCrop.variety}</span>
+                </span>
+              )}
+              {currentCrop.growthStage && (
+                <span className="hidden md:inline-flex text-xs text-slate-400 font-medium">
+                  • Stage: <span className="text-slate-600 font-medium ml-1">{currentCrop.growthStage}</span>
+                </span>
+              )}
+            </div>
+            <h3 className="text-base font-bold text-slate-900 mt-0.5 flex items-center gap-2">
+              <span>{currentCrop.displayName}</span>
+              {currentCrop.displayName.toLowerCase() !== currentCrop.commodityName.toLowerCase() && (
+                <span className="text-xs font-normal text-slate-500">
+                  (Mandi: {currentCrop.commodityName})
+                </span>
+              )}
+            </h3>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {POPULAR_COMMODITIES.map((commodity) => {
-            const isSelected = selectedCommodity.toLowerCase() === commodity.toLowerCase();
-            return (
-              <button
-                key={commodity}
-                onClick={() => handleSelectCommodity(commodity)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 scale-102 border border-emerald-600'
-                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <span>{CropIcon(commodity)}</span>
-                <span>{commodity}</span>
-              </button>
-            );
-          })}
-
-          {/* Custom Commodity write-in input */}
-          <form onSubmit={handleCustomCommoditySubmit} className="relative flex items-center">
-            <input
-              type="text"
-              value={customCommodityInput}
-              onChange={(e) => setCustomCommodityInput(e.target.value)}
-              placeholder={t('dashboard.other_commodity', 'Other crop (e.g. Chilli)...')}
-              className="pl-3 pr-8 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all w-44"
-            />
-            <button
-              type="submit"
-              className="absolute right-1.5 p-1 rounded-lg text-slate-400 hover:text-emerald-600 transition-colors"
-            >
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </form>
-        </div>
+        {/* If the farm has multiple crops, show tabs to switch between this farm's crops */}
+        {farmCrops.length > 1 && (
+          <div className="flex items-center gap-2 overflow-x-auto">
+            <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">
+              {t('dashboard.select_farm_crop', 'Farm Crops')}:
+            </span>
+            <div className="flex items-center gap-1.5">
+              {farmCrops.map((fc, idx) => {
+                const isSelected = selectedCropIndex === idx;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedCropIndex(idx)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${isSelected
+                        ? 'bg-emerald-600 text-white shadow-xs shadow-emerald-600/30 border border-emerald-600'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300'
+                      }`}
+                  >
+                    <span>{CropIcon(fc.commodityName)}</span>
+                    <span>{fc.displayName}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filter Row: State Select & Search & Sort */}
@@ -456,7 +505,9 @@ export const MarketPrice: React.FC<MarketPriceProps> = () => {
             <Building2 className="w-4 h-4 text-emerald-600" />
             <span>Mandi Live Trading Table</span>
             <span className="text-xs font-normal text-slate-500">
-              ({filteredRecords.length} markets found)
+              ({filteredRecords.length > INITIAL_DISPLAY_COUNT && !isExpanded
+                ? `Showing 10 of ${filteredRecords.length}`
+                : `${filteredRecords.length}`} markets found)
             </span>
           </h3>
           <span className="text-xs text-slate-400">
@@ -506,111 +557,136 @@ export const MarketPrice: React.FC<MarketPriceProps> = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
-            {filteredRecords.map((record, index) => {
-              const modalPrice = Number(record.modal_price) || 0;
-              const minPrice = Number(record.min_price) || modalPrice;
-              const maxPrice = Number(record.max_price) || modalPrice;
-              const isAboveAverage = averageModalPrice > 0 && modalPrice >= averageModalPrice;
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+              {displayedRecords.map((record, index) => {
+                const modalPrice = Number(record.modal_price) || 0;
+                const minPrice = Number(record.min_price) || modalPrice;
+                const maxPrice = Number(record.max_price) || modalPrice;
+                const isAboveAverage = averageModalPrice > 0 && modalPrice >= averageModalPrice;
 
-              return (
-                <div
-                  key={`${record.market}-${record.district}-${index}`}
-                  className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between group"
-                >
-                  <div className="space-y-2">
-                    {/* Card Top: Market & State */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h4 className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition-colors flex items-center gap-1.5">
-                          <Store className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span>{record.market}</span>
-                        </h4>
-                        <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                          <span>{record.district}, <strong className="text-slate-700">{record.state}</strong></span>
-                        </p>
+                return (
+                  <div
+                    key={`${record.market}-${record.district}-${index}`}
+                    className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between group"
+                  >
+                    <div className="space-y-2">
+                      {/* Card Top: Market & State */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition-colors flex items-center gap-1.5">
+                            <Store className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>{record.market}</span>
+                          </h4>
+                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span>{record.district}, <strong className="text-slate-700">{record.state}</strong></span>
+                          </p>
+                        </div>
+
+                        {/* Variety / Grade Pill */}
+                        {record.variety && (
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-semibold shrink-0 border border-slate-200">
+                            {record.variety}
+                          </span>
+                        )}
                       </div>
 
-                      {/* Variety / Grade Pill */}
-                      {record.variety && (
-                        <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-semibold shrink-0 border border-slate-200">
-                          {record.variety}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Modal Price Highlight */}
-                    <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100 flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
-                          Modal Price
-                        </span>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-xl font-extrabold text-emerald-950 font-heading">
-                            ₹{modalPrice.toLocaleString('en-IN')}
+                      {/* Modal Price Highlight */}
+                      <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                            Modal Price
                           </span>
-                          <span className="text-[10px] text-emerald-700 font-semibold">/ Quintal</span>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-xl font-extrabold text-emerald-950 font-heading">
+                              ₹{modalPrice.toLocaleString('en-IN')}
+                            </span>
+                            <span className="text-[10px] text-emerald-700 font-semibold">/ Quintal</span>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 block">Estimated</span>
+                          <span className="text-xs font-bold text-slate-800">
+                            ₹{(modalPrice / 100).toFixed(2)}/kg
+                          </span>
                         </div>
                       </div>
 
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-400 block">Estimated</span>
-                        <span className="text-xs font-bold text-slate-800">
-                          ₹{(modalPrice / 100).toFixed(2)}/kg
-                        </span>
+                      {/* Price Range & Visual Spread */}
+                      <div className="space-y-1 text-[11px]">
+                        <div className="flex items-center justify-between text-slate-500">
+                          <span>Min: ₹{minPrice.toLocaleString('en-IN')}</span>
+                          <span>Max: ₹{maxPrice.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                          <div
+                            className="bg-emerald-500 h-full rounded-full"
+                            style={{
+                              width: maxPrice > minPrice
+                                ? `${Math.max(10, Math.min(100, ((modalPrice - minPrice) / (maxPrice - minPrice)) * 100))}%`
+                                : '100%',
+                            }}
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    {/* Price Range & Visual Spread */}
-                    <div className="space-y-1 text-[11px]">
-                      <div className="flex items-center justify-between text-slate-500">
-                        <span>Min: ₹{minPrice.toLocaleString('en-IN')}</span>
-                        <span>Max: ₹{maxPrice.toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
-                        <div
-                          className="bg-emerald-500 h-full rounded-full"
-                          style={{
-                            width: maxPrice > minPrice
-                              ? `${Math.max(10, Math.min(100, ((modalPrice - minPrice) / (maxPrice - minPrice)) * 100))}%`
-                              : '100%',
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card Bottom: Arrival Date & Comparison */}
-                  <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                    <span className="flex items-center gap-1 text-slate-400">
-                      <Calendar className="w-3 h-3 text-slate-400" />
-                      <span>{record.arrival_date || 'Today'}</span>
-                    </span>
-
-                    {averageModalPrice > 0 && (
-                      <span
-                        className={`font-semibold flex items-center gap-1 ${
-                          isAboveAverage ? 'text-emerald-700' : 'text-amber-700'
-                        }`}
-                      >
-                        {isAboveAverage ? (
-                          <>
-                            <TrendingUp className="w-3 h-3" />
-                            <span>+₹{(modalPrice - averageModalPrice).toFixed(0)} vs avg</span>
-                          </>
-                        ) : (
-                          <>
-                            <TrendingDown className="w-3 h-3" />
-                            <span>-₹{(averageModalPrice - modalPrice).toFixed(0)} vs avg</span>
-                          </>
-                        )}
+                    {/* Card Bottom: Arrival Date & Comparison */}
+                    <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                      <span className="flex items-center gap-1 text-slate-400">
+                        <Calendar className="w-3 h-3 text-slate-400" />
+                        <span>{record.arrival_date || 'Today'}</span>
                       </span>
-                    )}
+
+                      {averageModalPrice > 0 && (
+                        <span
+                          className={`font-semibold flex items-center gap-1 ${isAboveAverage ? 'text-emerald-700' : 'text-amber-700'
+                            }`}
+                        >
+                          {isAboveAverage ? (
+                            <>
+                              <TrendingUp className="w-3 h-3" />
+                              <span>+₹{(modalPrice - averageModalPrice).toFixed(0)} vs avg</span>
+                            </>
+                          ) : (
+                            <>
+                              <TrendingDown className="w-3 h-3" />
+                              <span>-₹{(averageModalPrice - modalPrice).toFixed(0)} vs avg</span>
+                            </>
+                          )}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+
+            {/* Show More / Collapse Button */}
+            {filteredRecords.length > INITIAL_DISPLAY_COUNT && (
+              <div className="flex justify-center pt-2">
+                <button
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-semibold bg-white hover:bg-emerald-50 active:bg-emerald-100 text-slate-700 hover:text-emerald-800 border border-slate-200 hover:border-emerald-300 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                >
+                  {isExpanded ? (
+                    <>
+                      <ChevronUp className="w-4 h-4 text-emerald-600" />
+                      <span>{t('dashboard.show_less', 'Collapse / Show Less (Top 10)')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-4 h-4 text-emerald-600" />
+                      <span>
+                        {t('dashboard.show_more', 'Show More Mandis')} (+{filteredRecords.length - INITIAL_DISPLAY_COUNT} more)
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
