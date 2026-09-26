@@ -46,7 +46,11 @@
     "rules": "कृषि नियम",
     "publications": "प्रकाशन व शोध",
     "rules_badge": "ICAR/TNAU",
-    "new": "नया"
+    "new": "नया",
+    "sign_out": "साइन आउट",
+    "farmer_profile": "किसान प्रोफ़ाइल",
+    "email": "ईमेल",
+    "phone": "फ़ोन"
   },
   "dashboard": {
     "farmer_profile": "किसान प्रोफ़ाइल",
@@ -76,7 +80,19 @@
     "last_updated": "अंतिम अपडेट: अभी-अभी सेंटिनल-2A और आईएमडी रडार द्वारा",
     "adjust_parameters": "मापदंड समायोजित करें",
     "stage_cycle_info": "दिन {{day}} / ~{{total}} दिन चक्र · बुवाई {{date}}",
-    "local_storage_connected": "लोकल स्टोरेज कनेक्टेड"
+    "local_storage_connected": "लोकल स्टोरेज कनेक्टेड",
+    "market_prices_title": "सरकारी मंडी फसल भाव",
+    "market_prices_subtitle": "भारत भर की APMC मंडियों से वास्तविक समय के मॉडल ट्रेडिंग भाव (data.gov.in द्वारा)",
+    "select_commodity": "फसल / वस्तु चुनें",
+    "other_commodity": "अन्य फसल (जैसे मिर्च)...",
+    "filter_state": "राज्य / क्षेत्र",
+    "search_mandi": "मंडी / जिला खोजें",
+    "sort_by": "मंडी क्रमबद्ध करें",
+    "avg_modal_price": "औसत मॉडल भाव",
+    "min_market_price": "न्यूनतम भाव",
+    "max_market_price": "अधिकतम भाव",
+    "reporting_mandis": "सक्रिय मंडियां",
+    "refresh_mandi": "लाइव भाव सिंक करें"
   },
   "weather": {
     "title": "मौसम विश्लेषण",
@@ -263,5 +279,27 @@
     "black_soil": "काली / रेगुर मिट्टी (Black Soil)",
     "laterite": "लैटेराइट मिट्टी (Laterite)",
     "other": "अन्य"
+  },
+  "risk_levels": {
+    "critical": "अति गंभीर",
+    "high": "उच्च",
+    "medium": "मध्यम",
+    "low": "निम्न"
+  },
+  "risk_types": {
+    "temperature_stress": "तापमान तनाव",
+    "heat_stress": "लू / ताप तनाव",
+    "cold_stress": "शीत तनाव",
+    "water_stress": "जल तनाव",
+    "soil_condition": "मिट्टी की स्थिति",
+    "disease_risk": "रोग जोखिम",
+    "disease": "रोग",
+    "pest_risk": "कीट जोखिम",
+    "pest": "कीट",
+    "grain_filling": "दाना भराव",
+    "irrigation": "सिंचाई",
+    "nutrient_deficiency": "पोषक तत्व की कमी",
+    "weather": "मौसम चेतावनी",
+    "weather_alert": "मौसम चेतावनी"
   }
 }

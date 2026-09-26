@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Sprout, MapPin, LayoutDashboard, ChevronDown } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Sprout, MapPin, LayoutDashboard, ChevronDown, User, LogOut, Phone, Mail, Shield } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useFarm } from '../context/FarmContext';
 import { getFarms } from '../pages/dashboard/api';
 import { LanguageSelector } from './LanguageSelector';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 
 export const Navbar: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const {
     farm,
     user,
@@ -15,11 +17,47 @@ export const Navbar: React.FC = () => {
     setSelectedFarmId,
     farmsList,
     setFarmsList,
+    resetAll,
   } = useFarm();
   const location = useLocation();
   const isDashboard = location.pathname.startsWith('/dashboard');
 
   const [isLoadingFarms, setIsLoadingFarms] = useState(false);
+
+  // Retrieve stored user profile from localStorage as fallback
+  const authUser = useMemo(() => {
+    try {
+      const saved = localStorage.getItem('agrinet_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  }, [user]);
+
+  const firstName = user?.firstName || authUser?.first_name || '';
+  const lastName = user?.lastName || authUser?.last_name || '';
+  const farmerName = `${firstName} ${lastName}`.trim() || 'Ravi Kumar';
+  const farmerEmail = user?.email || authUser?.email || 'farmer@agrinet.io';
+  const farmerPhone = user?.phone || authUser?.phone_number || '+91 98765 43210';
+
+  const initials = useMemo(() => {
+    const parts = farmerName.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return farmerName.slice(0, 2).toUpperCase() || 'AG';
+  }, [farmerName]);
+
+  const handleSignOut = () => {
+    resetAll();
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch (e) {
+      console.error('Failed to clear storage on sign out:', e);
+    }
+    navigate('/');
+  };
 
   useEffect(() => {
     const fetchUserFarms = async () => {
@@ -143,6 +181,83 @@ export const Navbar: React.FC = () => {
               <span>{t('navigation.go_to_dashboard')}</span>
             </Link>
           )}
+
+          {/* Farmer Avatar Popover */}
+          <Popover>
+            <PopoverTrigger
+              className="relative flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-bold text-xs shadow-sm hover:shadow-md hover:scale-105 transition-all border-2 border-emerald-100 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 shrink-0"
+              aria-label={t('navigation.farmer_profile', 'Farmer Profile')}
+            >
+              <span>{initials}</span>
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full"></span>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              side="bottom"
+              sideOffset={8}
+              className="w-72 sm:w-80 p-4 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-emerald-100/80 z-50 text-slate-800"
+            >
+              {/* Profile Card Header */}
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-emerald-600/20 shrink-0">
+                  {initials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="font-bold text-slate-900 text-sm truncate leading-tight">
+                      {farmerName}
+                    </h4>
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-200/80">
+                      <Shield className="w-2.5 h-2.5" />
+                      {t('dashboard.farmer', 'Farmer')}
+                    </span>
+                    {farm.location?.name && (
+                      <span className="text-[10px] text-slate-500 truncate">
+                        • {farm.location.name}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Details (Email & Phone) */}
+              <div className="py-3 space-y-2 text-xs">
+                <div className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-100">
+                  <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                      {t('navigation.email', 'Email')}
+                    </p>
+                    <p className="font-medium text-slate-700 truncate">{farmerEmail}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-100">
+                  <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                      {t('navigation.phone', 'Phone')}
+                    </p>
+                    <p className="font-medium text-slate-700 truncate">{farmerPhone}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sign Out Action Button */}
+              <div className="pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99] shadow-2xs"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                  <span>{t('navigation.sign_out', 'Sign Out')}</span>
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
     </header>

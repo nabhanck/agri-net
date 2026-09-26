@@ -17,6 +17,7 @@ import { RuleEngineModule } from './rule-engine/rule-engine.module';
 import { CropsGrowthStagesModule } from './crops-growth-stages/crops-growth-stages.module';
 import { CropGrowthModule } from './crop-growth/crop-growth.module';
 import { AuthModule } from './auth/auth.module';
+import { MarketPriceModule } from './market-price/market-price.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { AuthModule } from './auth/auth.module';
     RuleEngineModule,
     CropGrowthModule,
     AuthModule,
+    MarketPriceModule,
   ],
   controllers: [AppController],
   providers: [AppService],

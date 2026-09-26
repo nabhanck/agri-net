@@ -39,6 +39,7 @@ import { CropIcon, formatHourlyTime, getCurrentWeatherIcon, getHourlyWeatherIcon
 import { processSoilMoistureData } from '@/utils/weatherSoilMoisture';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import { DiseaseDiagnostic } from './DiseaseDiagnostic';
+import { MarketPrice } from './MarketPrice';
 
 
 export const Dashboard: React.FC = () => {
@@ -968,6 +969,9 @@ export const Dashboard: React.FC = () => {
 
       {/* 3. AI Crop Disease & Pest Diagnostic */}
       <DiseaseDiagnostic state={state} />
+
+      {/* 4. Government Mandi Market Prices Intelligence */}
+      <MarketPrice state={state} />
 
       {/* 4. Actionable Farm Advisory Feed (The Core Decision Engine) */}
       <div className="hidden bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-md border border-slate-200/80 space-y-6">

@@ -99,3 +99,79 @@ export function getRainProbability(
             .map((forecast) => forecast.precipitation_probability)
     );
 }
+
+export function getRiskLevelBadgeColor(level: string) {
+    switch (level?.toUpperCase()) {
+        case 'CRITICAL':
+            return 'bg-red-50 text-red-800 border border-red-300';
+        case 'HIGH':
+            return 'bg-orange-50 text-orange-800 border border-orange-300';
+        case 'MEDIUM':
+            return 'bg-yellow-50 text-yellow-800 border border-yellow-300';
+        case 'LOW':
+            return 'bg-green-50 text-green-800 border border-green-300';
+        default:
+            return 'bg-gray-50 text-gray-800 border border-gray-300';
+    }
+}
+
+/**
+ * Converts raw risk type strings like TEMPERATURE_STRESS or heat_stress into Title Case ("Temperature Stress")
+ */
+export function transformRiskType(type: string): string {
+    if (!type) return '';
+    return type
+        .replace(/[-_]+/g, ' ')
+        .trim()
+        .toLowerCase()
+        .split(' ')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
+/**
+ * Returns formatted and optionally translated risk level / severity text
+ */
+export function getRiskLevelText(
+    level: string,
+    t?: (key: string, options?: any) => string
+): string {
+    if (!level) return '';
+    const normalized = level.toLowerCase().trim();
+    if (t) {
+        const translated = t(`risk_levels.${normalized}`);
+        if (translated && !translated.startsWith('risk_levels.')) {
+            return translated;
+        }
+    }
+    switch (level.toUpperCase()) {
+        case 'CRITICAL':
+            return 'Critical';
+        case 'HIGH':
+            return 'High';
+        case 'MEDIUM':
+            return 'Medium';
+        case 'LOW':
+            return 'Low';
+        default:
+            return level.charAt(0).toUpperCase() + level.slice(1).toLowerCase();
+    }
+}
+
+/**
+ * Returns formatted and optionally translated risk threat type text (e.g. TEMPERATURE_STRESS -> "Temperature Stress" / "तापमान तनाव")
+ */
+export function getRiskTypeText(
+    type: string,
+    t?: (key: string, options?: any) => string
+): string {
+    if (!type) return '';
+    const normalized = type.toLowerCase().trim().replace(/[- ]+/g, '_');
+    if (t) {
+        const translated = t(`risk_types.${normalized}`);
+        if (translated && !translated.startsWith('risk_types.')) {
+            return translated;
+        }
+    }
+    return transformRiskType(type);
+}

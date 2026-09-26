@@ -46,7 +46,11 @@
     "rules": "നിയമങ്ങൾ",
     "publications": "പ്രസിദ്ധീകരണങ്ങൾ",
     "rules_badge": "ICAR/TNAU",
-    "new": "പുതിയത്"
+    "new": "പുതിയത്",
+    "sign_out": "സൈൻ ഔട്ട്",
+    "farmer_profile": "കർഷക പ്രൊഫൈൽ",
+    "email": "ഇമെയിൽ",
+    "phone": "ഫോൺ നമ്പർ"
   },
   "dashboard": {
     "farmer_profile": "കർഷക പ്രൊഫൈൽ",
@@ -76,7 +80,19 @@
     "last_updated": "അവസാനം അപ്‌ഡേറ്റ് ചെയ്തത്: സെന്റിനൽ-2A, IMD റഡാർ വഴി",
     "adjust_parameters": "അളവുകൾ ക്രമീകരിക്കുക",
     "stage_cycle_info": "ദിവസം {{day}} / ~{{total}} ദിവസ ചക്രം · നട്ടത് {{date}}",
-    "local_storage_connected": "ലോക്കൽ സ്റ്റോറേജ് ബന്ധിപ്പിച്ചു"
+    "local_storage_connected": "ലോക്കൽ സ്റ്റോറേജ് ബന്ധിപ്പിച്ചു",
+    "market_prices_title": "മാർക്കറ്റ് വിളവിലകൾ (മണ്ടി നിരക്കുകൾ)",
+    "market_prices_subtitle": "ഇന്ത്യയിലുടനീളമുള്ള APMC മാർക്കറ്റുകളിൽ നിന്നുള്ള തത്സമയ ട്രേഡിംഗ് നിരക്കുകൾ (data.gov.in വഴി)",
+    "select_commodity": "വിള / ഉൽപ്പന്നം തിരഞ്ഞെടുക്കുക",
+    "other_commodity": "മറ്റു വിളകൾ (ഉദാ: മുളക്)...",
+    "filter_state": "സംസ്ഥാനം / മേഖല",
+    "search_mandi": "മാർക്കറ്റ് / ജില്ല തിരയുക",
+    "sort_by": "ക്രമപ്പെടുത്തുക",
+    "avg_modal_price": "ശരാശരി മോഡൽ വില",
+    "min_market_price": "കുറഞ്ഞ വില",
+    "max_market_price": "കൂടിയ വില",
+    "reporting_mandis": "സജീവ മാർക്കറ്റുകൾ",
+    "refresh_mandi": "തത്സമയ വിലകൾ പുതുക്കുക"
   },
   "weather": {
     "title": "കാലാവസ്ഥാ വിവരങ്ങൾ",
@@ -263,5 +279,27 @@
     "black_soil": "കറുത്ത മണ്ണ് (Black Soil)",
     "laterite": "ലാറ്ററൈറ്റ് / ചെങ്കൽ മണ്ണ് (Laterite)",
     "other": "മറ്റുള്ളവ"
+  },
+  "risk_levels": {
+    "critical": "അതിതീവ്രം",
+    "high": "ഉയർന്നത്",
+    "medium": "ഇടത്തരം",
+    "low": "കുറഞ്ഞത്"
+  },
+  "risk_types": {
+    "temperature_stress": "താപനില സമ്മർദ്ദം",
+    "heat_stress": "ഉഷ്ണ സമ്മർദ്ദം",
+    "cold_stress": "ശീത സമ്മർദ്ദം",
+    "water_stress": "ജല സമ്മർദ്ദം",
+    "soil_condition": "മണ്ണിന്റെ അവസ്ഥ",
+    "disease_risk": "രോഗ സാധ്യത",
+    "disease": "രോഗം",
+    "pest_risk": "കീട സാധ്യത",
+    "pest": "കീടം",
+    "grain_filling": "ധാന്യ രൂപീകരണം",
+    "irrigation": "ജലസേചനം",
+    "nutrient_deficiency": "പോഷക കുറവ്",
+    "weather": "കാലാവസ്ഥ മുന്നറിയിപ്പ്",
+    "weather_alert": "കാലാവസ്ഥ മുന്നറിയിപ്പ്"
   }
 }

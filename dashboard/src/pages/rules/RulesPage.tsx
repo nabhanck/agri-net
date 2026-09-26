@@ -22,7 +22,12 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getAdvisoryRules } from '../dashboard/api';
-import { useFarm } from '../../context/FarmContext';
+import { Badge } from '../../components/ui/badge';
+import {
+  getRiskLevelBadgeColor,
+  getRiskLevelText,
+  getRiskTypeText,
+} from '../../utils/helpers';
 
 export interface AdvisoryRuleItem {
   id: number;
@@ -197,7 +202,6 @@ const FALLBACK_RULES: AdvisoryRuleItem[] = [
 
 export const RulesPage: React.FC = () => {
   const { t } = useTranslation();
-  const { farm } = useFarm();
 
   const [rules, setRules] = useState<AdvisoryRuleItem[]>(FALLBACK_RULES);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -272,7 +276,7 @@ export const RulesPage: React.FC = () => {
       {/* 1. Header Banner */}
       <div className="rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white p-6 sm:p-8 shadow-xl border border-slate-700/50 relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        
+
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -285,11 +289,10 @@ export const RulesPage: React.FC = () => {
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-heading">
-              {t('rules.title') || 'Agricultural Advisory & Risk Rules'}
+              Agricultural Advisory & Risk Rules
             </h1>
             <p className="text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
-              {t('rules.subtitle') ||
-                'Rule matrices validated against ICAR, TNAU, and IRRI protocols. Triggers real-time advisories when live telemetry crosses biological thresholds.'}
+              Access trusted, crop-specific rules and guidance for smarter, climate-resilient farming.
             </p>
           </div>
 
@@ -346,7 +349,7 @@ export const RulesPage: React.FC = () => {
               <option value="ALL">🔬 All Threat Types</option>
               {riskTypes.map((rt) => (
                 <option key={rt} value={rt}>
-                  {rt}
+                  {getRiskTypeText(rt, t)}
                 </option>
               ))}
             </select>
@@ -409,15 +412,14 @@ export const RulesPage: React.FC = () => {
             return (
               <div
                 key={rule.id || rule.rule_code}
-                className={`bg-white rounded-2xl sm:rounded-3xl border transition-all duration-200 overflow-hidden shadow-xs hover:shadow-md ${
-                  isCrit
-                    ? 'border-rose-200 hover:border-rose-400'
-                    : isHigh
+                className={`bg-white rounded-2xl sm:rounded-3xl border transition-all duration-200 overflow-hidden shadow-xs hover:shadow-md ${isCrit
+                  ? 'border-rose-200 hover:border-rose-400'
+                  : isHigh
                     ? 'border-orange-200 hover:border-orange-400'
                     : isMed
-                    ? 'border-amber-200 hover:border-amber-400'
-                    : 'border-slate-200 hover:border-emerald-400'
-                }`}
+                      ? 'border-amber-200 hover:border-amber-400'
+                      : 'border-slate-200 hover:border-emerald-400'
+                  }`}
               >
                 {/* Rule Summary Header Row */}
                 <div
@@ -426,39 +428,24 @@ export const RulesPage: React.FC = () => {
                 >
                   <div className="space-y-1.5 flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-lg bg-slate-900 text-emerald-400 tracking-wide">
+                      <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-lg bg-slate-100 border border-slate-300 text-slate-500 tracking-wide">
                         {rule.rule_code}
-                      </span>
-
-                      <span
-                        className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                          isCrit
-                            ? 'bg-rose-100 text-rose-800 border-rose-300'
-                            : isHigh
-                            ? 'bg-orange-100 text-orange-800 border-orange-300'
-                            : isMed
-                            ? 'bg-amber-100 text-amber-800 border-amber-300'
-                            : 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                        }`}
-                      >
-                        {rule.risk_level} {rule.risk_type}
                       </span>
 
                       {/* Verified Badge */}
                       {rule.isVerified !== false && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300">
                           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          ICAR / TNAU Verified
+                          Verified
                         </span>
                       )}
 
                       {/* Status Pill */}
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                          rule.status !== false
-                            ? 'bg-emerald-100/70 text-emerald-800'
-                            : 'bg-slate-200 text-slate-600'
-                        }`}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${rule.status !== false
+                          ? 'bg-emerald-100/70 text-emerald-800'
+                          : 'bg-slate-200 text-slate-600'
+                          }`}
                       >
                         {rule.status !== false ? '● Active' : '○ Inactive'}
                       </span>
@@ -481,14 +468,11 @@ export const RulesPage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center justify-between md:justify-end gap-3 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-200/60">
-                    <div className="text-right hidden sm:block">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block leading-none">
-                        Priority Weight
-                      </span>
-                      <span className="text-sm font-extrabold text-slate-700 font-mono">
-                        {rule.priority ?? 0}
-                      </span>
-                    </div>
+                    <Badge
+                      className={`${getRiskLevelBadgeColor(rule.risk_level)} text-xs font-semibold px-2.5 py-1 shadow-2xs`}
+                    >
+                      {getRiskLevelText(rule.risk_level, t)} · {getRiskTypeText(rule.risk_type, t)}
+                    </Badge>
 
                     <button
                       type="button"

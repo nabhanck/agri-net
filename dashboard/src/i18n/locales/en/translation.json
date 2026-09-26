@@ -46,7 +46,11 @@
     "rules": "Rules",
     "publications": "Publications",
     "rules_badge": "ICAR / TNAU",
-    "new": "New"
+    "new": "New",
+    "sign_out": "Sign Out",
+    "farmer_profile": "Farmer Profile",
+    "email": "Email",
+    "phone": "Phone"
   },
   "dashboard": {
     "farmer_profile": "Farmer Profile",
@@ -76,7 +80,19 @@
     "last_updated": "Last updated: Just now via Sentinel-2A & IMD Radar",
     "adjust_parameters": "Adjust Parameters",
     "stage_cycle_info": "Day {{day}} of ~{{total}} days cycle · Sown {{date}}",
-    "local_storage_connected": "Local Storage Connected"
+    "local_storage_connected": "Local Storage Connected",
+    "market_prices_title": "Government Mandi Crop Prices",
+    "market_prices_subtitle": "Real-time modal trading rates from Agricultural Produce Market Committees (APMC) across India via data.gov.in",
+    "select_commodity": "Select Crop Commodity",
+    "other_commodity": "Other crop (e.g. Chilli)...",
+    "filter_state": "State / Region",
+    "search_mandi": "Search Market / District",
+    "sort_by": "Sort Mandis",
+    "avg_modal_price": "Average Modal Price",
+    "min_market_price": "Minimum Price",
+    "max_market_price": "Maximum Price",
+    "reporting_mandis": "Active Mandis",
+    "refresh_mandi": "Sync Live Prices"
   },
   "weather": {
     "title": "Weather Intelligence",
@@ -263,5 +279,27 @@
     "black_soil": "Black / Regur",
     "laterite": "Laterite",
     "other": "Other"
+  },
+  "risk_levels": {
+    "critical": "Critical",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low"
+  },
+  "risk_types": {
+    "temperature_stress": "Temperature Stress",
+    "heat_stress": "Heat Stress",
+    "cold_stress": "Cold Stress",
+    "water_stress": "Water Stress",
+    "soil_condition": "Soil Condition",
+    "disease_risk": "Disease Risk",
+    "disease": "Disease",
+    "pest_risk": "Pest Risk",
+    "pest": "Pest",
+    "grain_filling": "Grain Filling",
+    "irrigation": "Irrigation",
+    "nutrient_deficiency": "Nutrient Deficiency",
+    "weather": "Weather Alert",
+    "weather_alert": "Weather Alert"
   }
 }

@@ -169,7 +169,7 @@ export const AgronomistModal: React.FC<AgronomistModalProps> = ({ isOpen, onClos
               </div>
 
               <div
-                className={`max-w-[80%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed shadow-xs ${msg.sender === 'user'
+                className={`max-w-[80%] wrap-break-word rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed shadow-xs ${msg.sender === 'user'
                   ? 'bg-emerald-600 text-white rounded-tr-none'
                   : 'bg-white text-slate-800 border border-slate-200/80 rounded-tl-none'
                   }`}

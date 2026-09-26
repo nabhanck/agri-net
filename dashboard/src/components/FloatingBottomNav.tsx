@@ -17,7 +17,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({ className 
       label: t('navigation.homepage') || 'Homepage',
       to: '/dashboard',
       icon: Home,
-      isActive: location.pathname === '/dashboard' || location.pathname === '/',
+      isActive: location.pathname.startsWith('/dashboard'),
     },
     {
       id: 'rules',
@@ -25,7 +25,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({ className 
       to: '/rules',
       icon: SlidersHorizontal,
       isActive: location.pathname.startsWith('/rules'),
-      badge: t('navigation.rules_badge') || 'ICAR/TNAU',
+      // badge: t('navigation.rules_badge') || 'ICAR/TNAU',
     },
     {
       id: 'publications',
@@ -51,16 +51,14 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({ className 
             <NavLink
               key={item.id}
               to={item.to}
-              className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 select-none group ${
-                active
-                  ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30 scale-[1.02]'
-                  : 'text-slate-300 hover:text-white hover:bg-white/10'
-              }`}
+              className={`relative flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 select-none group ${active
+                ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30 scale-[1.02]'
+                : 'text-slate-300 hover:text-white hover:bg-white/10'
+                }`}
             >
               <Icon
-                className={`w-4 h-4 sm:w-4.5 sm:h-4.5 transition-transform duration-200 ${
-                  active ? 'scale-110 text-white' : 'text-slate-400 group-hover:text-emerald-300'
-                }`}
+                className={`w-4 h-4 sm:w-4.5 sm:h-4.5 transition-transform duration-200 ${active ? 'scale-110 text-white' : 'text-slate-400 group-hover:text-emerald-300'
+                  }`}
               />
               <span className="tracking-tight">{item.label}</span>
 
@@ -72,9 +70,9 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({ className 
               )}
 
               {/* Active Indicator Glow Pip */}
-              {active && (
+              {/* {active && (
                 <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_#ffffff]" />
-              )}
+              )} */}
             </NavLink>
           );
         })}

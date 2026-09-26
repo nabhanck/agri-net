@@ -89,8 +89,8 @@ export function App() {
         </footer>
       )}
 
-      {/* Floating Bottom Navigation Bar (Homepage, Rules, Publications) */}
-      <FloatingBottomNav />
+      {/* Floating Bottom Navigation Bar (Homepage, Rules, Publications) - ONLY in Main App Sections */}
+      {isMainAppSection && <FloatingBottomNav />}
 
       {/* Global Lightweight Voice Assistant Floating Button */}
       <VoiceMicButton />

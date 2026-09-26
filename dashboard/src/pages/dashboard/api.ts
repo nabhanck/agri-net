@@ -232,3 +232,89 @@ export const getAdvisoryRules = async () => {
         return { error: { code: status, message } };
     }
 };
+
+export interface MarketPriceRecord {
+    id?: number;
+    farm_id?: number;
+    crop_id?: number;
+    farm_crop_id?: number;
+    state: string;
+    district: string;
+    market: string;
+    commodity: string;
+    variety?: string;
+    grade?: string;
+    arrival_date?: string;
+    min_price?: number;
+    max_price?: number;
+    modal_price: number;
+    currency?: string;
+    fetched_at?: string;
+}
+
+export interface MarketPriceResponse {
+    status: string;
+    source: 'live_government_api' | 'cache' | 'fallback_db' | 'unavailable';
+    commodity: string;
+    total: number;
+    count: number;
+    unit: string;
+    averageModalPrice: number;
+    minModalPrice: number;
+    maxModalPrice: number;
+    marketsCount: number;
+    statesCovered: string[];
+    records: MarketPriceRecord[];
+    message?: string;
+}
+
+export interface FetchMarketPriceParams {
+    commodity?: string;
+    state?: string;
+    district?: string;
+    market?: string;
+    farm_id?: number;
+    crop_id?: number;
+    farm_crop_id?: number;
+    limit?: number;
+    force_refresh?: boolean;
+}
+
+export const getMarketPrices = async (params: FetchMarketPriceParams = {}) => {
+    try {
+        const BASE_URL = import.meta.env.VITE_APP_BASE_URL || 'http://localhost:3000';
+        const token = localStorage.getItem('access_token');
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const queryParams = new URLSearchParams();
+        if (params.commodity) queryParams.append('commodity', params.commodity);
+        if (params.farm_id) queryParams.append('farm_id', String(params.farm_id));
+        if (params.crop_id) queryParams.append('crop_id', String(params.crop_id));
+        if (params.farm_crop_id) queryParams.append('farm_crop_id', String(params.farm_crop_id));
+        if (params.limit) queryParams.append('limit', String(params.limit));
+        if (params.force_refresh) queryParams.append('force_refresh', 'true');
+
+        const queryString = queryParams.toString();
+        const URL = `${BASE_URL}/market-price${queryString ? `?${queryString}` : ''}`;
+        const response: AxiosResponse<MarketPriceResponse> = await axios.get(URL, { headers });
+
+        if (response && response.data) {
+            return { data: response.data };
+        } else {
+            return { error: { code: 400, message: 'Invalid response from server' } };
+        }
+    } catch (error: any) {
+        const status = error.response?.status || 400;
+        const serverMessage = error.response?.data?.message;
+        const message = Array.isArray(serverMessage)
+            ? serverMessage.join(', ')
+            : serverMessage || error.message || 'Unable to fetch market prices';
+
+        return { error: { code: status, message } };
+    }
+};
