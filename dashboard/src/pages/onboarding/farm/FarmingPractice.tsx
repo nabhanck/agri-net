@@ -84,6 +84,7 @@ export const FarmingPractice: React.FC = () => {
           crop_id: primaryCropId,
           variety: farm.crop?.variety || undefined,
           planting_date: farm.crop?.plantingDate || undefined,
+          growth_stage_id: farm.crop?.growthStageId || undefined,
         },
       ],
     };

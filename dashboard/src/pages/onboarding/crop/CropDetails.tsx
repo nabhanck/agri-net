@@ -8,9 +8,57 @@ import { getCropGrowthStages } from './api';
 import type { GrowthStageEntity } from '@/types/farm';
 import { CropIcon } from '@/utils/helpers';
 
+const getTodayDateString = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Calculate calendar days since planting
+const calculateDays = (dateStr: string): number => {
+  if (!dateStr) return 0;
+  try {
+    const pDate = new Date(dateStr);
+    if (isNaN(pDate.getTime())) return 0;
+
+    const now = new Date();
+    // Use UTC midnight timestamps to accurately calculate whole calendar days
+    const utcPlanting = Date.UTC(pDate.getUTCFullYear(), pDate.getUTCMonth(), pDate.getUTCDate());
+    const utcToday = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const diffTime = utcToday - utcPlanting;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays < 0 ? 0 : diffDays;
+  } catch {
+    return 0;
+  }
+};
+
+const getAutoStageForDays = (
+  stages: GrowthStageEntity[],
+  days: number
+): GrowthStageEntity | null => {
+  if (!stages || stages.length === 0) return null;
+  const sorted = [...stages].sort((a, b) => (a.stage_order ?? 0) - (b.stage_order ?? 0));
+  if (days <= 0) return sorted[0];
+
+  let cumulative = 0;
+  for (const st of sorted) {
+    const duration = Math.max(0, Number(st.duration_days) || 0);
+    cumulative += duration;
+    if (days <= cumulative) {
+      return st;
+    }
+  }
+  return sorted[sorted.length - 1];
+};
+
 export const CropDetails: React.FC = () => {
   const navigate = useNavigate();
   const { farm, updateCrop } = useFarm();
+  const todayStr = getTodayDateString();
 
   const activeCropInfo =
     POPULAR_CROPS.find(
@@ -23,10 +71,23 @@ export const CropDetails: React.FC = () => {
 
   const [selectedVariety, setSelectedVariety] = useState<string>(farm.crop.variety || 'Jyothi');
   const [customVariety, setCustomVariety] = useState<string>(farm.crop.customVariety || '');
-  const [plantingDate, setPlantingDate] = useState<string>(farm.crop.plantingDate || '2026-08-10');
-  const [growthStage, setGrowthStage] = useState<string>(
-    farm.crop.growthStage || 'Tillering & Vegetative'
-  );
+
+  // Clamp initial date so future dates are never loaded
+  const [plantingDate, setPlantingDate] = useState<string>(() => {
+    if (farm.crop.plantingDate && farm.crop.plantingDate <= todayStr) {
+      return farm.crop.plantingDate;
+    }
+    // Default to 15 days ago or today if no valid past date
+    const d = new Date();
+    d.setDate(d.getDate() - 15);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const defaultPast = `${y}-${m}-${day}`;
+    return defaultPast <= todayStr ? defaultPast : todayStr;
+  });
+
+  const [growthStage, setGrowthStage] = useState<string>(farm.crop.growthStage || '');
 
   // Sync with context if updated via voice assistant
   useEffect(() => {
@@ -35,23 +96,12 @@ export const CropDetails: React.FC = () => {
     }
   }, [farm.crop?.variety]);
 
-  // Calculate days since planting
-  const calculateDays = (dateStr: string) => {
-    try {
-      const pDate = new Date(dateStr);
-      const today = new Date('2026-08-22'); // current system reference time
-      const diffTime = Math.abs(today.getTime() - pDate.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return isNaN(diffDays) ? 12 : diffDays;
-    } catch {
-      return 12;
-    }
-  };
-
   const daysSincePlanting = calculateDays(plantingDate);
 
   // Fetch growth stages from backend based on selected crop ID
   useEffect(() => {
+    let isCancelled = false;
+
     const fetchStages = async () => {
       let cropIdNum = Number(farm.crop.cropId);
       if (isNaN(cropIdNum) || cropIdNum <= 0) {
@@ -62,39 +112,13 @@ export const CropDetails: React.FC = () => {
       setIsLoadingStages(true);
       try {
         const res = await getCropGrowthStages(cropIdNum);
+        if (isCancelled) return;
+
+        let stages: GrowthStageEntity[] = [];
         if (res?.data && res.data.length > 0) {
-          // Sort growth stages in ascending order by stage_order
-          const sorted = [...res.data].sort((a, b) => (a.stage_order ?? 0) - (b.stage_order ?? 0));
-          setGrowthStages(sorted);
-
-          // Find matching stage if already set in context
-          const currentStage = sorted.find(
-            (s) => s.id === farm.crop.growthStageId || s.stage_name === farm.crop.growthStage
-          );
-
-          if (currentStage) {
-            setGrowthStage(currentStage.stage_name || '');
-            setSelectedStageId(currentStage.id);
-          } else {
-            // Auto-calculate suggested stage based on planting days
-            let cumulative = 0;
-            let autoStage = sorted[0];
-            for (const st of sorted) {
-              cumulative += st.duration_days ?? 0;
-              if (daysSincePlanting <= cumulative) {
-                autoStage = st;
-                break;
-              }
-              autoStage = st;
-            }
-            if (autoStage) {
-              setGrowthStage(autoStage.stage_name || '');
-              setSelectedStageId(autoStage.id);
-            }
-          }
+          stages = [...res.data].sort((a, b) => (a.stage_order ?? 0) - (b.stage_order ?? 0));
         } else {
-          // Fallback to activeCropInfo stages if API returns empty
-          const fallbackStages: GrowthStageEntity[] = activeCropInfo.growthStages.map((st, idx) => ({
+          stages = activeCropInfo.growthStages.map((st, idx) => ({
             id: idx + 1,
             crop_id: cropIdNum,
             stage_name: st.stage,
@@ -102,37 +126,65 @@ export const CropDetails: React.FC = () => {
             duration_days: st.durationDays,
             description: st.description,
           }));
-          setGrowthStages(fallbackStages);
+        }
+
+        setGrowthStages(stages);
+
+        // Auto-calculate suggested stage based on planting days
+        const auto = getAutoStageForDays(stages, daysSincePlanting);
+        if (auto) {
+          setGrowthStage(auto.stage_name || '');
+          setSelectedStageId(auto.id);
         }
       } catch (error) {
+        if (isCancelled) return;
         console.error('Error fetching crop growth stages:', error);
+        const fallbackStages: GrowthStageEntity[] = activeCropInfo.growthStages.map((st, idx) => ({
+          id: idx + 1,
+          crop_id: cropIdNum,
+          stage_name: st.stage,
+          stage_order: idx + 1,
+          duration_days: st.durationDays,
+          description: st.description,
+        }));
+        setGrowthStages(fallbackStages);
+        const auto = getAutoStageForDays(fallbackStages, daysSincePlanting);
+        if (auto) {
+          setGrowthStage(auto.stage_name || '');
+          setSelectedStageId(auto.id);
+        }
       } finally {
-        setIsLoadingStages(false);
+        if (!isCancelled) {
+          setIsLoadingStages(false);
+        }
       }
     };
 
     fetchStages();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [farm.crop.cropId, farm.crop.cropName]);
 
-  // Suggest stage based on days whenever plantingDate or growthStages changes
+  // Recalculate auto growth stage whenever planting date or growth stages change
   useEffect(() => {
-    if (growthStages.length > 0) {
-      let cumulative = 0;
-      let matched = growthStages[0];
-      for (const st of growthStages) {
-        cumulative += st.duration_days ?? 0;
-        if (daysSincePlanting <= cumulative) {
-          matched = st;
-          break;
-        }
-        matched = st;
-      }
-      if (matched && (!selectedStageId || !growthStages.some((s) => s.id === selectedStageId))) {
-        setGrowthStage(matched.stage_name || '');
-        setSelectedStageId(matched.id);
+    if (growthStages.length > 0 && plantingDate) {
+      const auto = getAutoStageForDays(growthStages, daysSincePlanting);
+      if (auto) {
+        setGrowthStage(auto.stage_name || '');
+        setSelectedStageId(auto.id);
       }
     }
-  }, [plantingDate, growthStages]);
+  }, [plantingDate, daysSincePlanting, growthStages]);
+
+  const handlePlantingDateChange = (dateVal: string) => {
+    // Prevent future date selection
+    if (dateVal && dateVal > todayStr) {
+      dateVal = todayStr;
+    }
+    setPlantingDate(dateVal);
+  };
 
   const handleVarietyPick = (v: string) => {
     setSelectedVariety(v);
@@ -145,6 +197,9 @@ export const CropDetails: React.FC = () => {
 
   const handleContinue = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    const totalCycleDays = growthStages.reduce((sum, s) => sum + (s.duration_days || 0), 0) || 120;
+    const progress = Math.min(100, Math.max(5, Math.round((daysSincePlanting / totalCycleDays) * 100)));
+
     updateCrop({
       variety: selectedVariety === 'Other' && customVariety ? customVariety : selectedVariety,
       customVariety: customVariety,
@@ -152,13 +207,14 @@ export const CropDetails: React.FC = () => {
       growthStage: growthStage,
       growthStageId: selectedStageId ?? undefined,
       daysSincePlanting: daysSincePlanting,
-      growthStageProgress: 35,
+      growthStageProgress: progress,
     });
     navigate('/onboarding/soil');
   };
 
   const displayCropName = farm.crop.cropName || activeCropInfo.name || 'Rice';
   const cropSlug = farm.crop.cropId && isNaN(Number(farm.crop.cropId)) ? farm.crop.cropId : displayCropName.toLowerCase();
+  const autoCalculatedStage = getAutoStageForDays(growthStages, daysSincePlanting);
 
   useSetVoiceScope(
     {
@@ -193,7 +249,8 @@ export const CropDetails: React.FC = () => {
           setSelectedVariety(vStr);
           return true;
         } else if (k.includes('date')) {
-          setPlantingDate(String(value));
+          const vStr = String(value).trim();
+          handlePlantingDateChange(vStr);
           return true;
         } else if (k.includes('stage')) {
           const stStr = String(value).toLowerCase();
@@ -222,7 +279,7 @@ export const CropDetails: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate('/onboarding/crop-selection')}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Crop Selection</span>
@@ -317,7 +374,7 @@ export const CropDetails: React.FC = () => {
             Planting date
           </label>
           <p className="text-xs text-slate-500 -mt-1">
-            When did you plant this crop?
+            When did you plant this crop? (Future dates are disabled)
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
@@ -325,9 +382,10 @@ export const CropDetails: React.FC = () => {
               <input
                 type="date"
                 required
+                max={todayStr}
                 value={plantingDate}
-                onChange={(e) => setPlantingDate(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 text-sm font-semibold outline-none transition-all shadow-xs"
+                onChange={(e) => handlePlantingDateChange(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-slate-800 text-sm font-semibold outline-none transition-all shadow-xs cursor-pointer"
               />
               <Calendar className="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
             </div>
@@ -342,7 +400,11 @@ export const CropDetails: React.FC = () => {
                   Crop Age
                 </span>
                 <span className="text-sm font-bold text-slate-900">
-                  {daysSincePlanting} days in field
+                  {daysSincePlanting === 0
+                    ? 'Planted today (Day 0)'
+                    : daysSincePlanting === 1
+                    ? '1 day in field'
+                    : `${daysSincePlanting} days in field`}
                 </span>
               </div>
             </div>
@@ -375,21 +437,23 @@ export const CropDetails: React.FC = () => {
           ) : (
             <div className="space-y-2">
               {growthStages.map((stageItem, index) => {
-                const isCurrent =
+                const isSelected =
                   (selectedStageId && stageItem.id === selectedStageId) ||
                   growthStage === stageItem.stage_name;
+                const isAuto = autoCalculatedStage && (autoCalculatedStage.id === stageItem.id || autoCalculatedStage.stage_name === stageItem.stage_name);
+
                 return (
                   <div
                     key={stageItem.id ?? index}
                     onClick={() => handleStageSelect(stageItem)}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${isCurrent
+                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${isSelected
                       ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
                       : 'bg-white hover:bg-slate-50 border-slate-200'
                       }`}
                   >
                     <div className="flex items-center gap-3">
                       <div
-                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isCurrent
+                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isSelected
                           ? 'bg-emerald-600 text-white'
                           : 'bg-slate-100 text-slate-600'
                           }`}
@@ -407,11 +471,26 @@ export const CropDetails: React.FC = () => {
                       </div>
                     </div>
 
-                    {isCurrent && (
-                      <span className="px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-bold shadow-xs">
-                        Active Stage
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {isSelected ? (
+                        isAuto ? (
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-bold shadow-xs flex items-center gap-1">
+                            <Sparkles className="w-3 h-3" />
+                            Auto Stage
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-700 text-white text-[11px] font-bold shadow-xs flex items-center gap-1">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                            Selected
+                          </span>
+                        )
+                      ) : isAuto ? (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-semibold flex items-center gap-1">
+                          <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
+                          Suggested
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                 );
               })}

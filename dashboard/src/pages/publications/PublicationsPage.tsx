@@ -188,11 +188,10 @@ export const PublicationsPage: React.FC = () => {
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-heading">
-              {t('publications.title') || 'Agricultural Publications & Research'}
+              {'Agricultural Publications & Research'}
             </h1>
             <p className="text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
-              {t('publications.subtitle') ||
-                'Peer-reviewed journals, university research bulletins, and ICAR/TNAU packages of practices supporting AgriNet diagnostic algorithms.'}
+              Stay informed with the latest agricultural research, government updates, schemes, and advisories.
             </p>
           </div>
 
@@ -227,11 +226,10 @@ export const PublicationsPage: React.FC = () => {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                  selectedCategory === cat
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${selectedCategory === cat
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
               >
                 {cat === 'ALL' ? 'All Subjects' : cat}
               </button>
